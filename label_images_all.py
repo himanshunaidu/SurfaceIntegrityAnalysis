@@ -105,12 +105,12 @@ if rgb_path is None:
 st.write(f"Labeling image {st.session_state.current_index + 1} of {len(dataset)}")
 # image = Image.open(rgb_path)
 segmentation_path = os.path.join(DATASET_PATH, row['annotation_frame_path'].lstrip('/'))
-segmentation_class_id = [22, 9, 25]  # sidewalk, curb ramp, tactile paving
+segmentation_class_ids = [22, 9, 25]  # sidewalk, curb ramp, tactile paving
 bounds = (0, 0.5, 1, 0.9)
 image = get_visualize_image(
     rgb_path,
     segmentation_path,
-    segmentation_class_id,
+    segmentation_class_ids,
     bounds
 )
 st.image(image, caption=f"Image {st.session_state.current_index + 1}", width=300)

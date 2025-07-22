@@ -4,25 +4,27 @@ import pandas as pd
 import cv2
 from PIL import Image
 
-def filter_segmentation(segmentation, class_id, bounds: tuple):
+def get_segmentation_mask(segmentation, class_ids: list, bounds: tuple):
     min_x, min_y, max_x, max_y = bounds
     min_x = min_x * segmentation.shape[1]
     min_y = min_y * segmentation.shape[0]
     max_x = max_x * segmentation.shape[1]
     max_y = max_y * segmentation.shape[0]
-    
-    print(f"Filtering segmentation for class {class_id} within bounds: ({min_x}, {min_y}) to ({max_x}, {max_y})")
-    
-    mask = (segmentation == class_id) & \
-        (np.arange(segmentation.shape[0])[:, None] >= min_y) & \
-        (np.arange(segmentation.shape[0])[:, None] < max_y) & \
-        (np.arange(segmentation.shape[1])[None, :] >= min_x) & \
-        (np.arange(segmentation.shape[1])[None, :] < max_x)
-    filtered = np.zeros_like(segmentation)
-    filtered[mask] = segmentation[mask]
-    return filtered
 
-def compute_surface_normals(depth, fx, fy, cx, cy, step=20, segmentation=None, segmentation_class_ids=None, segmentation_radius=10):
+    mask = np.zeros_like(segmentation, dtype=bool)
+    for class_id in class_ids:
+        mask |= (segmentation == class_id)
+
+    mask &= (np.arange(segmentation.shape[0])[:, None] >= min_y) & \
+             (np.arange(segmentation.shape[0])[:, None] < max_y) & \
+             (np.arange(segmentation.shape[1])[None, :] >= min_x) & \
+             (np.arange(segmentation.shape[1])[None, :] < max_x)
+
+    # filtered = np.zeros_like(segmentation)
+    # filtered[mask] = segmentation[mask]
+    return mask
+
+def compute_surface_normals(depth, fx, fy, cx, cy, step=20, segmentation_mask=None, segmentation_radius=10):
     h, w = depth.shape
     normals = np.zeros((h, w, 3), dtype=np.float32)
 
@@ -32,17 +34,15 @@ def compute_surface_normals(depth, fx, fy, cx, cy, step=20, segmentation=None, s
             if dz == 0:
                 continue
             
-            if segmentation is not None and segmentation_class_ids is not None:
-                seg = segmentation[y, x]
-                seg_dx = segmentation[y, x + segmentation_radius] if x + segmentation_radius < w else segmentation[y, x]
-                seg_dy = segmentation[y + segmentation_radius, x] if y + segmentation_radius < h else segmentation[y, x]
-                seg_dx_1 = segmentation[y, x - segmentation_radius] if x - segmentation_radius >= 0 else segmentation[y, x]
-                seg_dy_1 = segmentation[y - segmentation_radius, x] if y - segmentation_radius >= 0 else segmentation[y, x]
-                if seg not in segmentation_class_ids or \
-                    seg_dx not in segmentation_class_ids or seg_dy not in segmentation_class_ids or \
-                    seg_dx_1 not in segmentation_class_ids or seg_dy_1 not in segmentation_class_ids:
+            if segmentation_mask is not None:
+                seg = segmentation_mask[y, x]
+                seg_dx = segmentation_mask[y, x + segmentation_radius] if x + segmentation_radius < w else segmentation_mask[y, x]
+                seg_dy = segmentation_mask[y + segmentation_radius, x] if y + segmentation_radius < h else segmentation_mask[y, x]
+                seg_dx_1 = segmentation_mask[y, x - segmentation_radius] if x - segmentation_radius >= 0 else segmentation_mask[y, x]
+                seg_dy_1 = segmentation_mask[y - segmentation_radius, x] if y - segmentation_radius >= 0 else segmentation_mask[y, x]
+                if not (seg and seg_dx and seg_dy and seg_dx_1 and seg_dy_1):
                     continue
-
+            
             # Center point in 3D
             X = (x - cx) * dz / fx
             Y = (y - cy) * dz / fy
@@ -59,6 +59,7 @@ def compute_surface_normals(depth, fx, fy, cx, cy, step=20, segmentation=None, s
             # Neighbor in y-direction
             dz_dy = depth[y + 1, x]
             if dz_dy == 0:
+                print(f"Skipping ({x}, {y}) due to zero depth in y-direction")
                 continue
             X_dy = (x - cx) * dz_dy / fx
             Y_dy = (y + 1 - cy) * dz_dy / fy
@@ -87,7 +88,11 @@ def get_normal_angles(normals):
     # Compute angles with respect to the z-axis
     up = np.array([0, 0, 1])
     angles = np.arccos(np.clip(np.dot(valid_normals, up), -1.0, 1.0))
-    return np.degrees(angles)
+    
+    valid_angles = angles[np.isfinite(angles)]
+    if valid_angles.size == 0:
+        return np.array([])
+    return np.degrees(valid_angles)
 
 def print_normals_statistics(normal_angles):
     valid_angles = normal_angles[np.isfinite(normal_angles)]

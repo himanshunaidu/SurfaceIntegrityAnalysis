@@ -78,6 +78,10 @@ if SIDEWALK_SURFACE_INTEGRITY_COL not in dataset.columns:
     dataset[SIDEWALK_SURFACE_INTEGRITY_COL] = None
 dataset = dataset.sort_values(by='location_timestamp').reset_index(drop=True)
 
+# Add default value for sidewalk_surface_integrity if not present
+if SIDEWALK_SURFACE_INTEGRITY_COL not in dataset.columns:
+    dataset[SIDEWALK_SURFACE_INTEGRITY_COL] = 'Not Sure'
+
 unlabeled = dataset[dataset[SIDEWALK_SURFACE_INTEGRITY_COL].isnull()]
 print(f"Found {len(unlabeled)} unlabeled images.")
 
@@ -111,6 +115,10 @@ image = get_visualize_image(
 )
 st.image(image, caption=f"Image {st.session_state.current_index + 1}", width=300)
 
+# Add label and textfield for current value
+current_label = row[SIDEWALK_SURFACE_INTEGRITY_COL]
+st.text(f"Current label: {current_label if pd.notna(current_label) else 'Not labeled'}")
+
 # Create buttons for each surface integrity option
 cols = st.columns(len(SURFACE_INTEGRITY_OPTIONS))
 for i, option in enumerate(SURFACE_INTEGRITY_OPTIONS):
@@ -118,13 +126,37 @@ for i, option in enumerate(SURFACE_INTEGRITY_OPTIONS):
         if st.button(option, key=f"{st.session_state.current_index}_{option}"):
             save_annotation(dataset, st.session_state.current_index, option)
             break
-        
-# Create Next and Previous buttons
-if st.session_state.current_index > 0:
-    if st.button("Previous", key="previous_button"):
-        st.session_state.current_index -= 1
-        st.rerun()
-if st.session_state.current_index < len(dataset) - 1:
-    if st.button("Next", key="next_button"):
-        st.session_state.current_index += 1
-        st.rerun()
+
+cols3 = st.columns(3)
+# Create Next and Previous buttons, as well as a go to button
+with cols3[0]:
+    if st.session_state.current_index > 0:
+        if st.button("Previous", key="previous_button"):
+            st.session_state.current_index -= 1
+            st.rerun()
+with cols3[1]:
+    if st.session_state.current_index < len(dataset) - 1:
+        if st.button("Next", key="next_button"):
+            st.session_state.current_index += 1
+            st.rerun()
+with cols3[2]:
+    cols2 = st.columns(2)
+    with cols2[0]:
+        go_to_index = st.number_input(
+            "",
+            min_value=1,
+            max_value=len(dataset),
+            value=st.session_state.current_index + 1,
+            step=1,
+            label_visibility="collapsed",
+        )
+    with cols2[1]:
+        if st.button("Go", key="go_to_button"):
+            # Clamp and convert to zero-based index
+            idx = int(go_to_index)
+            if idx < 1:
+                idx = 1
+            elif idx > len(dataset):
+                idx = len(dataset)
+            st.session_state.current_index = idx - 1
+            st.rerun()

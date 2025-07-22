@@ -6,7 +6,8 @@ from PIL import Image
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-from utils.surface_normals import get_segmentation_mask, compute_surface_normals, get_normal_angles
+from utils.surface_normals import get_segmentation_mask, compute_surface_normals, get_normal_angles, \
+    visualize_normals_on_image, plot_histogram_with_image
 
 DATASET_PATH = 'dataset/'
 DATASET_CSV_PATH = 'dataset/dataset_surface_integrity.csv'
@@ -17,6 +18,10 @@ DATASET_COLS = [
     'odometry_timestamp',
     'location_timestamp'
 ]
+
+HISTOGRAM_PATH = 'dataset/histograms/'
+if not os.path.exists(HISTOGRAM_PATH):
+    os.makedirs(HISTOGRAM_PATH)
 
 def compute_surface_normal_metrics(normal_angles):
     """
@@ -47,7 +52,7 @@ def create_histogram(normal_angles, bins=50):
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
     return hist, bin_centers
 
-def process_dataset(dataset_csv_path, segmentation_class_ids, bounds, intrinsics, step=20):
+def process_dataset(dataset_csv_path, segmentation_class_ids, bounds, intrinsics, step=5):
     """
     Process the dataset to compute surface normal metrics for each frame.
     """
@@ -60,10 +65,11 @@ def process_dataset(dataset_csv_path, segmentation_class_ids, bounds, intrinsics
         annotation_frame_path = os.path.join(DATASET_PATH, row['annotation_frame_path'].lstrip('/'))
 
         # Load and preprocess the frames
-        # rgb = Image.open(rgb_frame_path)
+        rgb = Image.open(rgb_frame_path)
         depth = Image.open(depth_frame_path)
         segmentation = Image.open(annotation_frame_path)
 
+        rgb = rgb.resize(depth.size, Image.BILINEAR)
         segmentation = segmentation.resize(depth.size, Image.NEAREST)
         depth = np.array(depth)
         segmentation = np.array(segmentation)
@@ -74,6 +80,14 @@ def process_dataset(dataset_csv_path, segmentation_class_ids, bounds, intrinsics
         normals = compute_surface_normals(
             depth, fx, fy, cx, cy, step=step, segmentation_mask=filtered_segmentation_mask)
         normal_angles = get_normal_angles(normals)
+        
+        normal_image = visualize_normals_on_image(np.array(rgb), normals, step=step, scale=step)
+        plot_histogram_with_image(normal_image, normal_angles, title="Surface Normals Histogram")
+        plt.tight_layout()
+        plt.savefig(os.path.join(HISTOGRAM_PATH, f"{row['rgb_frame_path'].split('/')[-1].replace('.png', '')}_histogram.png"))
+        plt.clf()
+        plt.close()
+        
         metrics = compute_surface_normal_metrics(normal_angles)
         
         # metrics['rgb_frame_path'] = row['rgb_frame_path']
@@ -93,7 +107,7 @@ def post_hoc_analysis(metrics_df):
 if __name__ == "__main__":
     # Example usage
     segmentation_class_ids = [22, 9, 25]  # sidewalk, curb ramp, tactile paving
-    bounds = (0.1, 0.1, 0.9, 0.9)  # Example bounds
+    bounds = (0.0, 0.5, 1.0, 0.9)  # Example bounds
     fx, fy = 1335.0, 1335.0
     cx, cy = 960.0, 720.0
     intrinsics = {'fx': fx, 'fy': fy, 'cx': cx, 'cy': cy}

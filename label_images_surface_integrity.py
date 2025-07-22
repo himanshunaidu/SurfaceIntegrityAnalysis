@@ -59,6 +59,17 @@ def save_annotation(dataset, index, label):
     st.session_state.current_index += 1
     st.rerun()
 
+def get_histogram(rgb_path):
+    """
+    Ad-hoc function that gets the histogram if it exists.
+    """
+    hist_path = os.path.join(HISTOGRAM_PATH, f"{os.path.basename(rgb_path).replace('.png', '')}_histogram.png")
+    if os.path.exists(hist_path):
+        return Image.open(hist_path)
+    else:
+        st.warning(f"No histogram found for {rgb_path}. Please run the analysis first.")
+        return None
+
 DATASET_PATH = 'dataset/'
 DATASET_CSV_PATH = 'dataset/dataset.csv'
 
@@ -72,6 +83,9 @@ DATASET_COLS = [
 SIDEWALK_SURFACE_INTEGRITY_COL = 'sidewalk_surface_integrity'
 
 SURFACE_INTEGRITY_OPTIONS = ['Broken', 'Gap', 'Curb Ramp', 'Occluded', 'Correct', 'Not Sure']
+
+HISTOGRAM_PATH = 'dataset/histograms/'
+GET_HISTOGRAM = True
 
 dataset = pd.read_csv(DATASET_CSV_PATH)
 if SIDEWALK_SURFACE_INTEGRITY_COL not in dataset.columns:
@@ -103,6 +117,7 @@ if rgb_path is None:
     st.stop()
 
 st.write(f"Labeling image {st.session_state.current_index + 1} of {len(dataset)}")
+st.write(f"Current image: {row['rgb_frame_path']}")
 # image = Image.open(rgb_path)
 segmentation_path = os.path.join(DATASET_PATH, row['annotation_frame_path'].lstrip('/'))
 segmentation_class_ids = [22, 9, 25]  # sidewalk, curb ramp, tactile paving
@@ -160,3 +175,9 @@ with cols3[2]:
                 idx = len(dataset)
             st.session_state.current_index = idx - 1
             st.rerun()
+            
+# View the histogram if it exists
+if GET_HISTOGRAM:
+    hist_image = get_histogram(rgb_path)
+    if hist_image:
+        st.image(hist_image, caption="Histogram", width=800)

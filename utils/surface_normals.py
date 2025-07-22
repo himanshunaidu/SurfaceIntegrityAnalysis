@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import cv2
 from PIL import Image
+from matplotlib import pyplot as plt
 
 def get_segmentation_mask(segmentation, class_ids: list, bounds: tuple):
     min_x, min_y, max_x, max_y = bounds
@@ -113,3 +114,23 @@ def visualize_normals_on_image(rgb, normals, step=20, scale=20):
                 end_point = (int(x + scale * n[0]), int(y - scale * n[1]))
                 cv2.arrowedLine(vis, (x, y), end_point, color=(0, 255, 0), thickness=scale//4, tipLength=scale/10)    
     return vis
+
+def plot_histogram_with_image(normal_image, normal_angles, title="Normals Histogram"):
+    valid_angles = normal_angles[np.isfinite(normal_angles)]
+    if valid_angles.size == 0:
+        print("No valid angles found for histogram.")
+        return None
+    
+    angles_degrees = valid_angles
+    
+    # Subplots, one for normal_image and one for histogram
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+    ax1.imshow(normal_image)
+    ax1.set_title("Normal Image")
+    ax1.axis('off')
+    ax2.set_title(title)
+    ax2.hist(angles_degrees.flatten(), bins=50, color='blue', alpha=0.7)
+    ax2.set_xlabel("Normal Values")
+    ax2.set_ylabel("Frequency")
+    
+    return fig, ax1, ax2

@@ -71,7 +71,7 @@ DATASET_COLS = [
 ]
 SIDEWALK_SURFACE_INTEGRITY_COL = 'sidewalk_surface_integrity'
 
-SURFACE_INTEGRITY_OPTIONS = ['Broken', 'Gap', 'Occluded', 'Correct', 'Not Sure']
+SURFACE_INTEGRITY_OPTIONS = ['Broken', 'Gap', 'Curb Ramp', 'Occluded', 'Correct', 'Not Sure']
 
 dataset = pd.read_csv(DATASET_CSV_PATH)
 if SIDEWALK_SURFACE_INTEGRITY_COL not in dataset.columns:

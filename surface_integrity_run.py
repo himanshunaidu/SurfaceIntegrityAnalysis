@@ -7,7 +7,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 from utils.surface_normals import get_segmentation_mask, compute_surface_normals, get_normal_angles, \
-    visualize_normals_on_image, plot_histogram_with_image
+    visualize_normals_on_image, plot_histogram_with_image, visualize_surface_integrity
 
 DATASET_PATH = 'dataset/'
 DATASET_CSV_PATH = 'dataset/dataset_surface_integrity.csv'
@@ -20,6 +20,7 @@ DATASET_COLS = [
 ]
 
 HISTOGRAM_PATH = 'dataset/histograms/'
+HISTOGRAM_PERCENTILES = [40, 50, 60, 70, 80]
 if not os.path.exists(HISTOGRAM_PATH):
     os.makedirs(HISTOGRAM_PATH)
 
@@ -52,7 +53,7 @@ def create_histogram(normal_angles, bins=50):
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
     return hist, bin_centers
 
-def process_dataset(dataset_csv_path, segmentation_class_ids, bounds, intrinsics, step=5):
+def process_dataset(dataset_csv_path, segmentation_class_ids, bounds, intrinsics, step=2):
     """
     Process the dataset to compute surface normal metrics for each frame.
     """
@@ -81,7 +82,10 @@ def process_dataset(dataset_csv_path, segmentation_class_ids, bounds, intrinsics
             depth, fx, fy, cx, cy, step=step, segmentation_mask=filtered_segmentation_mask)
         normal_angles = get_normal_angles(normals)
         
-        normal_image = visualize_normals_on_image(np.array(rgb), normals, step=step, scale=step)
+        # normal_image = visualize_normals_on_image(np.array(rgb), normals, step=step, scale=step*2,
+        #                                           normal_angles=normal_angles, 
+        #                                           percentiles=HISTOGRAM_PERCENTILES)
+        normal_image = visualize_surface_integrity(rgb=np.array(rgb), normals=normals, step=step, scale=step*2)
         plot_histogram_with_image(normal_image, normal_angles, title="Surface Normals Histogram")
         plt.tight_layout()
         plt.savefig(os.path.join(HISTOGRAM_PATH, f"{row['rgb_frame_path'].split('/')[-1].replace('.png', '')}_histogram.png"))
@@ -112,7 +116,7 @@ if __name__ == "__main__":
     cx, cy = 960.0, 720.0
     intrinsics = {'fx': fx, 'fy': fy, 'cx': cx, 'cy': cy}
 
-    metrics_df = process_dataset(DATASET_CSV_PATH, segmentation_class_ids, bounds, intrinsics)
+    metrics_df = process_dataset(DATASET_CSV_PATH, segmentation_class_ids, bounds, intrinsics, step=2)
     print(metrics_df.head())
 
     corrected_sidewalk_metrics_df = metrics_df[(metrics_df['sidewalk_surface_integrity'] == 'Correct') \

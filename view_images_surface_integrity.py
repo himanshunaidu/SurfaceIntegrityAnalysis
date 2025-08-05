@@ -49,16 +49,6 @@ def get_visualize_image(rgb_path, segmentation_path, segmentation_class_ids: lis
 
     return combined_image
 
-def save_annotation(dataset, index, label):
-    """
-    Saves the annotation for the current image.
-    """
-    dataset.loc[index, 'sidewalk_surface_integrity'] = label
-    dataset.to_csv(DATASET_CSV_PATH, index=False)
-    st.success(f"Marked as {label}")
-    st.session_state.current_index += 1
-    st.rerun()
-
 def get_histogram(rgb_path):
     """
     Ad-hoc function that gets the histogram if it exists.
@@ -82,7 +72,7 @@ DATASET_COLS = [
 ]
 SIDEWALK_SURFACE_INTEGRITY_COL = 'sidewalk_surface_integrity'
 
-SURFACE_INTEGRITY_OPTIONS = ['Broken', 'Gap', 'Minor', 'Curb Ramp', 'Occluded', 'Correct', 'Not Sure']
+SURFACE_INTEGRITY_OPTIONS = ['Broken', 'Gap', 'Curb Ramp', 'Occluded', 'Correct', 'Not Sure']
 
 HISTOGRAM_PATH = 'dataset/histograms/'
 GET_HISTOGRAM = True
@@ -91,6 +81,11 @@ dataset = pd.read_csv(DATASET_CSV_PATH)
 if SIDEWALK_SURFACE_INTEGRITY_COL not in dataset.columns:
     dataset[SIDEWALK_SURFACE_INTEGRITY_COL] = None
 dataset = dataset.sort_values(by='location_timestamp').reset_index(drop=True)
+dataset = dataset[(dataset[SIDEWALK_SURFACE_INTEGRITY_COL] == 'Broken') | \
+    (dataset[SIDEWALK_SURFACE_INTEGRITY_COL] == 'Gap')]  # Filter for 'Broken' and 'Gap' labels
+# dataset = dataset[(dataset[SIDEWALK_SURFACE_INTEGRITY_COL] == 'Correct') | \
+#                   (dataset[SIDEWALK_SURFACE_INTEGRITY_COL] == 'Curb Ramp') | \
+#                   (dataset[SIDEWALK_SURFACE_INTEGRITY_COL] == 'Occluded')]  # Filter for 'Correct', 'Curb Ramp', and 'Occluded' labels
 
 # Add default value for sidewalk_surface_integrity if not present
 if SIDEWALK_SURFACE_INTEGRITY_COL not in dataset.columns:
@@ -121,7 +116,7 @@ st.write(f"Current image: {row['rgb_frame_path']}")
 # image = Image.open(rgb_path)
 segmentation_path = os.path.join(DATASET_PATH, row['annotation_frame_path'].lstrip('/'))
 segmentation_class_ids = [22, 9, 25]  # sidewalk, curb ramp, tactile paving
-bounds = (0, 0.5, 1, 1.0)
+bounds = (0, 0.5, 1, 0.9)
 image = get_visualize_image(
     rgb_path,
     segmentation_path,
@@ -133,14 +128,6 @@ st.image(image, caption=f"Image {st.session_state.current_index + 1}", width=300
 # Add label and textfield for current value
 current_label = row[SIDEWALK_SURFACE_INTEGRITY_COL]
 st.text(f"Current label: {current_label if pd.notna(current_label) else 'Not labeled'}")
-
-# Create buttons for each surface integrity option
-cols = st.columns(len(SURFACE_INTEGRITY_OPTIONS))
-for i, option in enumerate(SURFACE_INTEGRITY_OPTIONS):
-    with cols[i]:
-        if st.button(option, key=f"{st.session_state.current_index}_{option}"):
-            save_annotation(dataset, st.session_state.current_index, option)
-            break
 
 cols3 = st.columns(3)
 # Create Next and Previous buttons, as well as a go to button

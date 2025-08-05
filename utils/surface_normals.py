@@ -95,6 +95,31 @@ def get_normal_angles(normals):
         return np.array([])
     return np.degrees(valid_angles)
 
+def visualize_surface_integrity(rgb, normals, step=20, scale=20):
+    """
+    Checks surface integrity based on computed normals by checking for irregularities in normals.
+    Irregularies can be defined as normals that deviate significantly from their neighbors.
+    """
+    neighbour_step = step * 2
+    vis = rgb.copy()
+    for y in range(step, normals.shape[0] - step, step):
+        for x in range(step, normals.shape[1] - step, step):
+            n = normals[y, x]
+            neighbor_normals = normals[y-neighbour_step:y+neighbour_step+1, x-neighbour_step:x+neighbour_step+1].reshape(-1, 3)
+            neighbor_normals = neighbor_normals[np.linalg.norm(neighbor_normals, axis=1) > 0]
+            if neighbor_normals.size == 0:
+                continue
+            mean_normal = np.mean(neighbor_normals, axis=0)
+            if np.linalg.norm(mean_normal) == 0:
+                continue
+            mean_normal /= np.linalg.norm(mean_normal)
+            deviation = np.linalg.norm(n - mean_normal)
+            # Display deviation as a color on the image
+            deviation_color = (int(255 * deviation), 0, int(255 * (1 - deviation)))  # Red for high deviation, blue for low
+            end_point = (int(x + scale * n[0]), int(y - scale * n[1]))
+            cv2.arrowedLine(vis, (x, y), end_point, color=deviation_color, thickness=scale//4, tipLength=scale/10) 
+    return vis
+
 def print_normals_statistics(normal_angles):
     valid_angles = normal_angles[np.isfinite(normal_angles)]
     if valid_angles.size == 0:
@@ -105,14 +130,29 @@ def print_normals_statistics(normal_angles):
     std_angle = np.std(valid_angles)
     print(f"Mean Angle: {mean_angle}, Std Angle: {std_angle}")
 
-def visualize_normals_on_image(rgb, normals, step=20, scale=20):
+def visualize_normals_on_image(rgb, normals, step=20, scale=20, *, 
+        normal_angles=None, percentiles=None):
     vis = rgb.copy()
+    # Decide color based on the normal angle percentiles
+    if percentiles is None and (normal_angles is not None and normal_angles.size > 0):
+        percentiles = np.percentile(normal_angles, [0, 25, 50, 75, 100])
+        print(percentiles)
+    colors = [(0, 255, 255), (0, 0, 255), (0, 255, 0), (255, 255, 0), (255, 0, 0), (165, 42, 42)]  # Cyan, Blue, Green, Yellow, Red, Brown
+
+    def get_color(normal):
+        if percentiles is None:
+            return (0, 255, 0)
+        up = np.array([0, 0, 1])
+        angle = np.arccos(np.clip(np.dot(normal, up), -1.0, 1.0))
+        angle_degrees = np.degrees(angle)
+        return colors[np.digitize(angle_degrees, percentiles)]
+
     for y in range(step, normals.shape[0] - step, step):
         for x in range(step, normals.shape[1] - step, step):
             n = normals[y, x]
             if np.linalg.norm(n) > 0:
                 end_point = (int(x + scale * n[0]), int(y - scale * n[1]))
-                cv2.arrowedLine(vis, (x, y), end_point, color=(0, 255, 0), thickness=scale//4, tipLength=scale/10)    
+                cv2.arrowedLine(vis, (x, y), end_point, color=get_color(n), thickness=scale//4, tipLength=scale/10)    
     return vis
 
 def plot_histogram_with_image(normal_image, normal_angles, title="Normals Histogram"):

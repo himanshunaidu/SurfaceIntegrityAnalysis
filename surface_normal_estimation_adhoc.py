@@ -7,15 +7,18 @@ from matplotlib import pyplot as plt
 # paths = ['adhoc/rgb/3f76035400_frame_001440.png', 
 #          'adhoc/depth/3f76035400_depth_frame_001440.png',
 #          'adhoc/segment/3f76035400_frame_001440_gtFine_labelIds.png']
-paths = ['adhoc/rgb/2f6aa18afe_frame_003240.png', 
-         'adhoc/depth/2f6aa18afe_depth_frame_003240.png',
-         'adhoc/segment/2f6aa18afe_frame_003240_gtFine_labelIds.png']
+# paths = ['adhoc/rgb/2f6aa18afe_frame_003240.png', 
+#          'adhoc/depth/2f6aa18afe_depth_frame_003240.png',
+#          'adhoc/segment/2f6aa18afe_frame_003240_gtFine_labelIds.png']
 # paths = ['adhoc/rgb/6024554a53_frame_014400.png', 
 #          'adhoc/depth/6024554a53_depth_frame_014400.png',
 #          'adhoc/segment/6024554a53_frame_014400_gtFine_labelIds.png']
 # paths = ['adhoc/rgb/3aaf8437bf_frame_004320.png', 
 #          'adhoc/depth/3aaf8437bf_depth_frame_004320.png',
 #          'adhoc/segment/3aaf8437bf_frame_004320_gtFine_labelIds.png']
+paths = ['adhoc/rgb/50d8803b77_frame_000000.png',
+         'adhoc/depth/50d8803b77_depth_frame_000000.png',
+         None]
 
 rgb_path = paths[0]
 depth_path = paths[1]
@@ -24,22 +27,25 @@ depth = Image.open(depth_path)
 rgb = rgb.resize(depth.size, Image.BILINEAR)
 # depth = depth.resize(rgb.size, Image.NEAREST)
 
-segmentation_path = paths[2]
+segmentation_path = paths[2] if paths[2] is not None else None
 # segmentation_path = 'adhoc/segment/2f6aa18afe_frame_003240_gtFine_labelIds.png'
 # segmentation_path = 'adhoc/segment/6024554a53_frame_014400_gtFine_labelIds.png'
 # segmentation_path = 'adhoc/segment/3aaf8437bf_frame_004320_gtFine_labelIds.png'
-segmentation = Image.open(segmentation_path)
-segmentation = segmentation.resize(depth.size, Image.NEAREST)
+segmentation = None
+if segmentation_path is not None:
+    segmentation = Image.open(segmentation_path)
+    segmentation = segmentation.resize(depth.size, Image.NEAREST)
 
 rgb = np.array(rgb)
 depth = np.array(depth)
-segmentation = np.array(segmentation)
+if segmentation_path is not None:
+    segmentation = np.array(segmentation)
 
 fx, fy = 1335.0, 1335.0
 cx, cy = 960.0, 720.0
 segmentation_class_id = 22 # sidewalk
 
-print(f"Image size: {rgb.shape}, Depth size: {depth.shape}, Segmentation size: {segmentation.shape}")
+print(f"Image size: {rgb.shape}, Depth size: {depth.shape}, Segmentation size: {segmentation.shape if segmentation is not None else 'None'}")
 
 def filter_segmentation(segmentation, class_id, bounds: tuple):
     min_x, min_y, max_x, max_y = bounds
@@ -57,6 +63,23 @@ def filter_segmentation(segmentation, class_id, bounds: tuple):
         (np.arange(segmentation.shape[1])[None, :] < max_x)
     filtered = np.zeros_like(segmentation)
     filtered[mask] = segmentation[mask]
+    return filtered
+
+def filter_segmentation_when_none(rgb, class_id, bounds: tuple):
+    min_x, min_y, max_x, max_y = bounds
+    min_x = min_x * rgb.shape[1]
+    min_y = min_y * rgb.shape[0]
+    max_x = max_x * rgb.shape[1]
+    max_y = max_y * rgb.shape[0]
+
+    print(f"Filtering segmentation for class {class_id} within bounds: ({min_x}, {min_y}) to ({max_x}, {max_y})")
+
+    mask = (np.arange(rgb.shape[0])[:, None] >= min_y) & \
+        (np.arange(rgb.shape[0])[:, None] < max_y) & \
+        (np.arange(rgb.shape[1])[None, :] >= min_x) & \
+        (np.arange(rgb.shape[1])[None, :] < max_x)
+    filtered = np.ones((rgb.shape[0], rgb.shape[1], 1)) * class_id
+    filtered[~mask] = 0
     return filtered
 
 def compute_surface_normals(depth, fx, fy, cx, cy, step=20, segmentation=None, segmentation_radius=10):
@@ -136,14 +159,20 @@ def print_normals_statistics(normal_angles):
     std_angle = np.std(valid_angles)
     print(f"Mean Angle: {mean_angle}, Std Angle: {std_angle}")
 
-def visualize_normals_on_image(rgb, normals, step=20, scale=20):
+def visualize_normals_on_image(rgb, normals, step=20, scale=20, normal_angles=None):
+    percentiles = np.percentile(normal_angles, [0, 25, 50, 75, 100]) if normal_angles is not None else None
+    colors = [(0, 255, 255), (0, 0, 255), (0, 255, 0), (255, 255, 0), (255, 0, 0), (165, 42, 42)]
+    up = np.array([0, 0, 1])
+    
     vis = rgb.copy()
     for y in range(step, normals.shape[0] - step, step):
         for x in range(step, normals.shape[1] - step, step):
             n = normals[y, x]
+            angle = np.degrees(np.arccos(np.clip(np.dot(n, up), -1.0, 1.0))) if np.linalg.norm(n) > 0 else None
+            color = colors[np.digitize(angle, percentiles) - 1] if percentiles is not None and angle is not None else (255, 255, 255)
             if np.linalg.norm(n) > 0:
                 end_point = (int(x + scale * n[0]), int(y - scale * n[1]))
-                cv2.arrowedLine(vis, (x, y), end_point, color=(0, 255, 0), thickness=scale//4, tipLength=scale/10)    
+                cv2.arrowedLine(vis, (x, y), end_point, color=color, thickness=scale//4, tipLength=scale/10)    
     return vis
 
 def plot_histogram_with_image(normal_image, normal_angles, title="Normals Histogram"):
@@ -166,15 +195,20 @@ def plot_histogram_with_image(normal_image, normal_angles, title="Normals Histog
     plt.tight_layout()
     plt.show()
 
-step = 1
+step = 4
 scale = 4
 # exit(-1)
-segmentation = filter_segmentation(segmentation, segmentation_class_id, (0, 0.3, 1, 0.9))
+
+if segmentation_path is not None:
+    segmentation = filter_segmentation(segmentation, segmentation_class_id, (0, 0.3, 1, 0.9))
+else:
+    segmentation = filter_segmentation_when_none(rgb, segmentation_class_id, (0, 0.5, 1, 1))
 normals = compute_surface_normals(depth, fx, fy, cx, cy, step=step, 
                                   segmentation=segmentation, segmentation_radius=5)
 normal_angles = get_normal_angles(normals)
 print_normals_statistics(normal_angles)
-normal_image = visualize_normals_on_image(rgb, normals, step=step, scale=scale)
+normal_image = visualize_normals_on_image(rgb, normals, step=step, scale=scale,
+                                          normal_angles=normal_angles)
 plot_histogram_with_image(normal_image, normal_angles, title="Surface Normals Histogram")
 
 # plt.figure(figsize=(10, 6))

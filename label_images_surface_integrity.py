@@ -70,8 +70,8 @@ def get_histogram(rgb_path):
         st.warning(f"No histogram found for {rgb_path}. Please run the analysis first.")
         return None
 
-DATASET_PATH = 'dataset/'
-DATASET_CSV_PATH = 'dataset/dataset.csv'
+DATASET_PATH = 'dataset/ios_point_mapper/'
+DATASET_CSV_PATH = 'dataset/ios_point_mapper/dataset.csv'
 
 DATASET_COLS = [
     'rgb_frame_path',
@@ -84,7 +84,7 @@ SIDEWALK_SURFACE_INTEGRITY_COL = 'sidewalk_surface_integrity'
 
 SURFACE_INTEGRITY_OPTIONS = ['Broken', 'Gap', 'Minor', 'Curb Ramp', 'Occluded', 'Correct', 'Not Sure']
 
-HISTOGRAM_PATH = 'dataset/histograms/'
+HISTOGRAM_PATH = 'dataset/ios_point_mapper/histograms/'
 GET_HISTOGRAM = True
 
 dataset = pd.read_csv(DATASET_CSV_PATH)

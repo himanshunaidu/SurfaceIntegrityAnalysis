@@ -95,16 +95,22 @@ sphere = o3d.geometry.TriangleMesh.create_sphere(radius=1.0)
 sphere.paint_uniform_color([0.1, 0.1, 0.7]) # Blue color
 
 pcd = vbg.extract_point_cloud()
-o3d.visualization.draw([pcd, sphere])
+pcd_legacy = pcd.to_legacy()
+o3d.visualization.draw([pcd])
+
+# Save point cloud
+o3d.io.write_point_cloud("output.ply", pcd_legacy)
+
 exit(-1)
 
 # --- 3) Raycast a depth map from the nth camera ---
-n      = 0 # len(frames) - 1  # target frame index
+n      = len(frames) - 1  # target frame index
 K_n    = frames[n]["K"].to(device)
 # Twc_n  = o3d.core.Tensor(frames[n]["T_w_c"].astype(np.float32), device=device)
 # Tc_w_n = o3d.core.linalg.inv(Twc_n)              # camera <- world
 Twc_n = frames[n]["T_w_c"].astype(np.float32)
-Tc_w_n = np.linalg.inv(Twc_n)  # camera <- world
+# Tc_w_n = np.linalg.inv(Twc_n)  # camera <- world
+Tc_w_n = Twc_n.copy()
 
 Tc_w_n_cache = Tc_w_n.copy()
 

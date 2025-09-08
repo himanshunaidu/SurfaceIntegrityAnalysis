@@ -101,8 +101,8 @@ def get_intrinsics(data: pd.Series, scale_x = 1.0, scale_y = 1.0) -> np.ndarray:
     ])
     if scale_x != 1.0 or scale_y != 1.0:
         intrinsics = _resize_camera_matrix(intrinsics, scale_x, scale_y)
-    print(f"{yaw_from_K(intrinsics, IMG_SIZE[1], IMG_SIZE[0])} degrees yaw, pitch")
-    exit(-1)
+    # print(f"{yaw_from_K(intrinsics, IMG_SIZE[1], IMG_SIZE[0])} degrees yaw, pitch")
+    # exit(-1)
     return intrinsics
 
 def get_pose_matrix(data: pd.Series) -> np.ndarray:
@@ -112,9 +112,21 @@ def get_pose_matrix(data: pd.Series) -> np.ndarray:
         data['odometry_qx'], data['odometry_qy'], data['odometry_qz'], data['odometry_qw']
     ]).as_matrix()
     # Rotate matrix by 90 degrees counterclockwise
-    rotation = np.dot(rotation, R.from_euler('y', -15, degrees=True).as_matrix())
+    # rotation = np.dot(rotation, R.from_euler('y', -15, degrees=True).as_matrix())
+    # rotation = np.dot(rotation, R.from_quat([0.0, 0.0, 1.0, 0.0]).as_matrix())
     
+    # R_ac = np.diag([1,-1,-1]).astype(np.float32)
+    # rotation = R_ac.T @ rotation
+
     pose_matrix = np.eye(4)
     pose_matrix[:3, :3] = rotation
     pose_matrix[:3, 3] = translation
+    pose_matrix = np.linalg.inv(pose_matrix)
     return pose_matrix
+
+# if __name__=="__main__":
+#     # vect = [0.9975097, -0.014964684, 0.05961522, -0.03458885]
+#     vect = [0.03458885, -0.05961522, -0.014964684, 0.9975097]
+#     print("Vector:", vect)
+#     rotation = R.from_quat(vect).as_matrix()
+#     print("Rotation Matrix:\n", rotation)

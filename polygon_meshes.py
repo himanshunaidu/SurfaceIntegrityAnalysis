@@ -3,7 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # --- Step 1: Load the mesh and sample to point cloud ---
-pcd = o3d.io.read_point_cloud("dataset/deepwalk/1_138312.0.ply")
+pcd = o3d.io.read_point_cloud("dataset/ios_point_cloud/Sidewalk1.ply")
+# pcd = o3d.io.read_point_cloud("dataset/deepwalk/0_138311.0.ply")
 # o3d.visualization.draw_geometries([pcd])
 # uniformly sample points from the point cloud
 pcd = pcd.uniform_down_sample(every_k_points=5)
@@ -45,8 +46,8 @@ eigvals, eigvecs = np.linalg.eigh(cov)
 plane_axes = eigvecs[:, [1, 2]]  # Use 2 main axes in the plane
 
 # Define rectangle size (manually or based on data spread)
-width = 4.0  # meters
-height = 24.0
+width = 2.0  # meters
+height = 2.0
 
 # Generate corners of the rectangle in the plane
 corners = np.array([

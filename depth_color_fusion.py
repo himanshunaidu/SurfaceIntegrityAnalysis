@@ -12,7 +12,7 @@ sdf_trunc    = 5 * voxel_size
 block_res    = 8          # voxels per block (default)
 device       = o3d.core.Device("CPU:0")  # or "CUDA:0"
 depth_scale  = 1000.0    # meters per depth unit; set to your data
-depth_max    = 20.0        # far clip in meters
+depth_max    = 200.0        # far clip in meters
 
 IMG_WIDTH = 1920
 IMG_HEIGHT = 1440
@@ -100,7 +100,6 @@ o3d.visualization.draw([pcd])
 
 # Save point cloud
 o3d.io.write_point_cloud("output.ply", pcd_legacy)
-
 exit(-1)
 
 # --- 3) Raycast a depth map from the nth camera ---
@@ -137,7 +136,7 @@ depth[np.isinf(depth)] = 0.0   # mark misses invalid
 
 ### Debugging
 # 3) Choose a sparse grid of pixels to visualize (e.g., every 40 px)
-step = 10
+step = 1
 vv, uu = np.mgrid[0:H:step, 0:W:step]
 idx = (vv * W + uu).ravel()
 
@@ -170,8 +169,8 @@ T_w_c_n = Tc_w_n_cache # np.linalg.inv(np.asarray(Tc_w_n, dtype=np.float64))
 cam_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
 cam_frame.transform(T_w_c_n)
 
-o3d.visualization.draw([mesh, ls, cam_frame])
-exit(-1)
+# o3d.visualization.draw([mesh, ls, cam_frame])
+# exit(-1)
 
 ### Debugging end
 

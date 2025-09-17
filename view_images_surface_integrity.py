@@ -60,8 +60,8 @@ def get_histogram(rgb_path):
         st.warning(f"No histogram found for {rgb_path}. Please run the analysis first.")
         return None
 
-DATASET_PATH = 'dataset/ios_point_mapper/'
-DATASET_CSV_PATH = 'dataset/ios_point_mapper/dataset.csv'
+DATASET_PATH = 'dataset/broken_sidewalk_2/'
+DATASET_CSV_PATH = 'dataset/broken_sidewalk_2/dataset_subset.csv'
 
 DATASET_COLS = [
     'rgb_frame_path',
@@ -81,8 +81,8 @@ dataset = pd.read_csv(DATASET_CSV_PATH)
 if SIDEWALK_SURFACE_INTEGRITY_COL not in dataset.columns:
     dataset[SIDEWALK_SURFACE_INTEGRITY_COL] = None
 dataset = dataset.sort_values(by='location_timestamp').reset_index(drop=True)
-dataset = dataset[(dataset[SIDEWALK_SURFACE_INTEGRITY_COL] == 'Broken') | \
-    (dataset[SIDEWALK_SURFACE_INTEGRITY_COL] == 'Gap')]  # Filter for 'Broken' and 'Gap' labels
+# dataset = dataset[(dataset[SIDEWALK_SURFACE_INTEGRITY_COL] == 'Broken') | \
+#     (dataset[SIDEWALK_SURFACE_INTEGRITY_COL] == 'Gap')]  # Filter for 'Broken' and 'Gap' labels
 # dataset = dataset[(dataset[SIDEWALK_SURFACE_INTEGRITY_COL] == 'Correct') | \
 #                   (dataset[SIDEWALK_SURFACE_INTEGRITY_COL] == 'Curb Ramp') | \
 #                   (dataset[SIDEWALK_SURFACE_INTEGRITY_COL] == 'Occluded')]  # Filter for 'Correct', 'Curb Ramp', and 'Occluded' labels

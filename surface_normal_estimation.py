@@ -6,8 +6,8 @@ from PIL import Image
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-DATASET_PATH = 'dataset/ios_point_mapper'
-DATASET_CSV_PATH = 'dataset/ios_point_mapper/dataset.csv'
+DATASET_PATH = 'dataset/broken_sidewalk_2'
+DATASET_CSV_PATH = 'dataset/broken_sidewalk_2/dataset_subset.csv'
 DATASET_COLS = [
     'rgb_frame_path',
     'depth_frame_path',
@@ -16,7 +16,7 @@ DATASET_COLS = [
     'location_timestamp'
 ]
 
-HISTOGRAM_OUTPUT_PATH = 'dataset/ios_point_mapper/histogram/'
+HISTOGRAM_OUTPUT_PATH = 'dataset/broken_sidewalk_2/histogram/'
 
 def filter_segmentation(segmentation, class_id, bounds: tuple):
     min_x, min_y, max_x, max_y = bounds

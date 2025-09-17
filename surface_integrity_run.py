@@ -9,8 +9,9 @@ import matplotlib.pyplot as plt
 from utils.surface_normals import get_segmentation_mask, compute_surface_normals, get_normal_angles, \
     visualize_normals_on_image, plot_histogram_with_image, visualize_surface_integrity
 
-DATASET_PATH = 'dataset/'
-DATASET_CSV_PATH = 'dataset/dataset_surface_integrity.csv'
+DATASET_PATH = 'dataset/broken_sidewalk_2'
+# DATASET_CSV_PATH = 'dataset/dataset_surface_integrity.csv'
+DATASET_CSV_PATH = 'dataset/broken_sidewalk_2/dataset_subset.csv'
 DATASET_COLS = [
     'rgb_frame_path',
     'depth_frame_path',
@@ -19,7 +20,7 @@ DATASET_COLS = [
     'location_timestamp'
 ]
 
-HISTOGRAM_PATH = 'dataset/histograms/'
+HISTOGRAM_PATH = 'dataset/broken_sidewalk_2/histograms/'
 HISTOGRAM_PERCENTILES = [40, 50, 60, 70, 80]
 if not os.path.exists(HISTOGRAM_PATH):
     os.makedirs(HISTOGRAM_PATH)

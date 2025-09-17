@@ -99,8 +99,8 @@ def get_intrinsics(data: pd.Series, scale_x = 1.0, scale_y = 1.0) -> np.ndarray:
         [data['intrinsics_10'], data['intrinsics_11'], data['intrinsics_12']],
         [data['intrinsics_20'], data['intrinsics_21'], data['intrinsics_22']]
     ])
-    if scale_x != 1.0 or scale_y != 1.0:
-        intrinsics = _resize_camera_matrix(intrinsics, scale_x, scale_y)
+    # if scale_x != 1.0 or scale_y != 1.0:
+    #     intrinsics = _resize_camera_matrix(intrinsics, scale_x, scale_y)
     # print(f"{yaw_from_K(intrinsics, IMG_SIZE[1], IMG_SIZE[0])} degrees yaw, pitch")
     # exit(-1)
     return intrinsics

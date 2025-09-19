@@ -1,9 +1,11 @@
+import os
 import open3d as o3d
 import numpy as np
 import matplotlib.pyplot as plt
 
 # --- Step 1: Load the mesh and sample to point cloud ---
-pcd = o3d.io.read_point_cloud("dataset/ios_point_cloud/Sidewalk1.ply")
+DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dataset", "ios_point_cloud"))
+pcd = o3d.io.read_point_cloud(os.path.join(DATASET_PATH, "Sidewalk1.ply"))
 # pcd = o3d.io.read_point_cloud("dataset/deepwalk/0_138311.0.ply")
 # o3d.visualization.draw_geometries([pcd])
 # uniformly sample points from the point cloud

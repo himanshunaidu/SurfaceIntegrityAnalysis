@@ -1,10 +1,12 @@
+import os
 import numpy as np
 import open3d as o3d
 from skimage import morphology, measure
 
 from utils.plane import get_plane_mesh, get_viz_with_transparency
 
-PCD_PATH = "data/deepwalk/2_138312.0/ply_cropped.ply"
+DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dataset", "deepwalk"))
+PCD_PATH = os.path.join(DATASET_PATH, "2_138312.0", "ply_cropped.ply")
 pcd_original = o3d.io.read_point_cloud(PCD_PATH)
 
 # Downsample

@@ -26,8 +26,8 @@ scale_y = DEPTH_HEIGHT / IMG_HEIGHT
 #   K      -> o3d.core.Tensor [[fx,0,cx],[0,fy,cy],[0,0,1]] (float64)
 #   T_w_c  -> 4x4 world<-camera (float64)
 #   conf   -> optional numpy/torch array HxW in [0,1] (same resolution as depth)
-DATASET_PATH = 'dataset/broken_sidewalk_2/'
-FRAMES_PATH = 'dataset/broken_sidewalk_2/dataset.csv'
+DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dataset', 'broken_sidewalk_2'))
+FRAMES_PATH = os.path.join(DATASET_PATH, 'dataset.csv')
 frames_df = pd.read_csv(FRAMES_PATH)
 frames = []
 for index, row in frames_df.iterrows():

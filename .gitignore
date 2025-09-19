@@ -1,7 +1,4 @@
-dataset/
-single_depth/__pycache__/
-single_depth/adhoc/
-
 # Python files
 *.py[cod]
 __pycache__/
+*/__pycache__/

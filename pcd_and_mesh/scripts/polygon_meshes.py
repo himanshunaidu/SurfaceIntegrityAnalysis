@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # --- Step 1: Load the mesh and sample to point cloud ---
-DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dataset", "ios_point_cloud"))
+DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "ios_point_cloud"))
 pcd = o3d.io.read_point_cloud(os.path.join(DATASET_PATH, "Sidewalk1.ply"))
 # pcd = o3d.io.read_point_cloud("dataset/deepwalk/0_138311.0.ply")
 # o3d.visualization.draw_geometries([pcd])

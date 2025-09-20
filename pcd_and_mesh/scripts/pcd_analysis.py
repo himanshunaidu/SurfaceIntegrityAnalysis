@@ -3,6 +3,8 @@ import numpy as np
 import open3d as o3d
 from skimage import morphology, measure
 
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from utils.plane import get_plane_mesh, get_viz_with_transparency
 
 DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dataset", "deepwalk"))

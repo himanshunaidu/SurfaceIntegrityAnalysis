@@ -3,7 +3,7 @@ import open3d as o3d
 import numpy as np
 import matplotlib.pyplot as plt
 
-DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dataset", "ios_point_cloud"))
+DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "ios_point_cloud"))
 PATH = os.path.join(DATASET_PATH, "Sidewalk1.ply")
 
 # --- Step 1: Load the mesh and sample to point cloud ---

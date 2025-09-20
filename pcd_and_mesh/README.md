@@ -20,6 +20,10 @@ The lab experiments will consist of using some surface boards to simulate differ
 - Additional Issue Characteristics: Gap Slope
 - Environment Characteristics: Lighting Conditions, Weather Conditions (may not be relevant for lab-controlled datasets)
 
+Notes:
+1. Gap orientation can be one of: longitudinal (Run parallel to the centerline), transverse (Run perpendicular to the centerline), diagonal (Run at an angle to the centerline).
+2. In these experiments, the device height will be fixed discrete values, while the device angle and speed will have value ranges dependent on the height.
+
 ### Dataset Contents
 
 Each row in the dataset would consist of the following:
@@ -50,6 +54,14 @@ lab_controlled_datasets/
     │   ├── confidence/
     │   │   ├── frame_0001.png
     │   │   ├── frame_0002.png
+    │   │   └── ...
+    │   ├── point_clouds/
+    │   │   ├── frame_0001.ply
+    │   │   ├── frame_0002.ply
+    │   │   └── ...
+    │   ├── polygon_meshes/
+    │   │   ├── frame_0001.ply
+    │   │   ├── frame_0002.ply
     │   │   └── ...
     │   ├── dataset.csv
     │   └── ...

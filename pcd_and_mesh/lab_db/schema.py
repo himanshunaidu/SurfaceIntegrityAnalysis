@@ -5,13 +5,25 @@ import sys
 
 from enum import Enum
 from uuid import UUID, uuid4
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterable, List, Sequence, Tuple, Optional
 from pydantic import BaseModel, Field, ConfigDict
+from dataclasses import dataclass
 
 
 ### Factors
 # - Issue Characteristics: Gap Width, Gap Depth, Gap Orientation, Gap Length, Surface Height Difference
 # - Device Characteristics: Device Height, Device Angle, Device Speed
+
+FACTORS = [
+    "gap_width",
+    "gap_depth",
+    "gap_orientation",
+    "gap_length",
+    "surface_height_difference",
+    "device_height",
+    "device_angle",
+    "device_speed",
+]
 
 # (Future)
 # - Additional Issue Characteristics: Gap Slope
@@ -56,7 +68,7 @@ class AttributeSchema(BaseModel):
     surface_height_difference: float = Field(
         ...,
         description="Height difference between adjacent surfaces (mm).",
-        json_schema_extra={"suggested": {"typical_range_mm": [0.0, 10.0], "unit": "mm"}},
+        json_schema_extra={"suggested": {"typical_range_mm": [0.0, 10.0, 15.0, 20.0, 25.0], "unit": "mm"}},
     )
     device_height: float = Field(
         ...,
@@ -66,7 +78,7 @@ class AttributeSchema(BaseModel):
     device_angle: float = Field(
         ...,
         description="Pitch/tilt angle of the device (degrees). The limits for these will depend on the device height.",
-        json_schema_extra={"suggested": {"typical_range_deg": [0.0, 60.0], "unit": "deg"}},
+        json_schema_extra={"suggested": {"typical_range_deg": [0.0, 60.0, 90.0], "unit": "deg"}},
     )
     device_speed: float = Field(
         # The device will move from 205 cm away to 45 cm away, with speed decided by the time taken (1 s, 2 s, 4 s).
@@ -74,3 +86,9 @@ class AttributeSchema(BaseModel):
         description="Device speed (m/s).",
         json_schema_extra={"suggested": {"typical_range_mps": [0.4, 0.8, 1.6], "unit": "m/s"}},
     )
+    
+@dataclass
+class DatasetBuildPlan:
+    """Configuration for producing the CSV."""
+    overrides: Optional[Dict[str, Sequence[Any]]] = None      # to narrow/step any dimension(s)
+    extra_result_columns: Sequence[str] = ("result_score", "result_label", "notes")

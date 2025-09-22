@@ -12,7 +12,7 @@ import itertools
 from typing import Any, Dict, Iterable, List, Sequence, Tuple, Optional
 
 from schema import AttributeSchema, DatasetBuildPlan, DatasetBuildPlanOverrides, FACTORS
-from utils.schema_utils import pick_suggestion_values, default_angle_plan
+from schema_utils import pick_suggestion_values, default_angle_plan, get_default_trial_namer
 from schema import BASIC_LONGITUDINAL_OVERRIDES, BASIC_BANDIT_FACTORS
 
 def build_trial_grid(
@@ -90,12 +90,52 @@ def make_dataframe(
     df = pd.DataFrame(rows)[ordered_cols]
     return df
 
+def save_schema(build_plan: DatasetBuildPlan, factors: Sequence[str], bandit_factors: Sequence[str], other_details: dict, out_path: str):
+    """
+    Save the schema of the DataFrame to a json file.
+    """
+    schema = AttributeSchema.model_json_schema()
+    schema["properties"]["trial_name"]["description"] = "Name of the trial or experiment."
+    schema["properties"]["id"]["description"] = "Unique identifier for this dataset row (UUID4)."
+    for col in build_plan.extra_result_columns:
+        schema["properties"][col] = {
+            "title": col,
+            "type": ["number", "null"],
+            "description": f"Result column '{col}' (float or null)."
+        }
+
+    # Add factor details
+    schema["factors"] = factors
+    schema["bandit_factors"] = bandit_factors
+
+    # Add other details
+    schema["other_details"] = other_details    
+    
+    with open(out_path, "w") as f:
+        import json
+        json.dump(schema, f, indent=2)
+    print(f"Wrote schema to {out_path}")
+
 if __name__ == "__main__":
     plan = DatasetBuildPlan(overrides=BASIC_LONGITUDINAL_OVERRIDES, bandit_test_factors=BASIC_BANDIT_FACTORS)
     
+    NAMING_FACTORS = ["gap_width", "gap_depth", "surface_height_difference"]
+    OTHER_FACTORS = [f for f in FACTORS if f not in NAMING_FACTORS]
+    trial_namer = get_default_trial_namer(plan.overrides, NAMING_FACTORS, OTHER_FACTORS)
+
     # trial names like "1_1", "1_2", ... based on row index
-    df = make_dataframe(plan, trial_namer=lambda i, combo: f"1_{i+1}")
+    df = make_dataframe(plan, trial_namer=trial_namer)
     print(df.head(10))   # quick peek
     out_path = os.path.join(os.path.dirname(__file__), "lab_db.csv")
     df.to_csv(out_path, index=False)
     print(f"Wrote {len(df)} trials to {out_path}")
+    
+    schema_path = os.path.join(os.path.dirname(__file__), "lab_db_schema.json")
+    other_details = {
+        "naming_function_details": {
+            "naming_factors": NAMING_FACTORS,
+            "other_factors": OTHER_FACTORS,
+            "description": "Trial names are constructed from the indices of the naming factors, with indices of other factors combined into a final index."
+        }
+    }
+    save_schema(plan, NAMING_FACTORS, BASIC_BANDIT_FACTORS, other_details, schema_path)

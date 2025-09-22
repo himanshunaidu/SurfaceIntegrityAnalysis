@@ -14,21 +14,13 @@ from dataclasses import dataclass
 # - Issue Characteristics: Gap Width, Gap Depth, Gap Orientation, Gap Length, Surface Height Difference
 # - Device Characteristics: Device Height, Device Angle, Device Speed
 
-FACTORS = [
-    "gap_width",
-    "gap_depth",
-    "gap_orientation",
-    "gap_length",
-    "surface_height_difference",
-    "device_height",
-    "device_angle",
-    "device_speed",
-]
-
 # (Future)
 # - Additional Issue Characteristics: Gap Slope
 # - Environment Characteristics: Lighting Conditions, Weather Conditions (may not be relevant for lab-controlled datasets)
 
+"""
+Classes defining the schema for dataset attributes and build plans.
+"""
 class AttributeSchema(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     
@@ -86,9 +78,46 @@ class AttributeSchema(BaseModel):
         description="Device speed (m/s).",
         json_schema_extra={"suggested": {"typical_range_mps": [0.4, 0.8, 1.6], "unit": "m/s"}},
     )
-    
+
 @dataclass
 class DatasetBuildPlan:
     """Configuration for producing the CSV."""
     overrides: Optional[Dict[str, Sequence[Any]]] = None      # to narrow/step any dimension(s)
+    ab_test_factors: Sequence[str] = ("gap_length", "device_speed")  # which factors to AB-test (2 variants each)
     extra_result_columns: Sequence[str] = ("result_score", "result_label", "notes")
+    
+@dataclass
+class DatasetBuildPlanOverrides:
+    gap_width: Optional[Sequence[float]] = None
+    gap_depth: Optional[Sequence[float]] = None
+    gap_orientation: Optional[Sequence[str]] = None
+    gap_length: Optional[Sequence[float]] = None
+    surface_height_difference: Optional[Sequence[float]] = None
+    device_height: Optional[Sequence[float]] = None
+    device_angle: Optional[Sequence[float]] = None
+    device_speed: Optional[Sequence[float]] = None
+    
+"""
+Constants for building trial grids and dataframes.
+"""
+FACTORS = [
+    "gap_width",
+    "gap_depth",
+    "gap_orientation",
+    "gap_length",
+    "surface_height_difference",
+    "device_height",
+    "device_angle",
+    "device_speed",
+]
+
+BASIC_LONGITUDINAL_OVERRIDES = DatasetBuildPlanOverrides(
+    gap_width=[0.0, 2.0, 5.0, 10.0, 20.0, 30.0],
+    gap_depth=[10.0, 25.0, 50.0],
+    gap_orientation=["longitudinal"],#, "transverse", "oblique"],
+    gap_length=[0.0, 100.0, 500.0],
+    surface_height_difference=[0.0, 5.0, 10.0, 20.0],
+    device_height=[1080.0, 1370.0],
+    device_angle=[60.0],
+    device_speed=[0.4, 0.8, 1.6]
+)

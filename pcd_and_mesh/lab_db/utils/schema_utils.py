@@ -25,20 +25,3 @@ def default_angle_plan(min_angle: float, max_angle: float, step: float = 30.0) -
     """Fallback plan for a 2-number angle range."""
     count = int((max_angle - min_angle) / step) + 1
     return [min_angle + i * step for i in range(count)]
-
-def derive_ab_pair_from_suggestions(field: Field) -> Tuple[Any, Any]:
-    """
-    Pick two representative values (A, B) for an AB-tested factor from its suggestions.
-    Heuristics:
-      - If 'values' list: take first two distinct values.
-      - If '*range*' list with >= 2 items: take the first and last entries (endpoints).
-    """
-    values = pick_suggestion_values(field) or []
-    if not values or len(values) == 1:
-        raise ValueError("Need at least 2 suggested values to derive A/B variants.")
-
-    # Prefer endpoints to increase contrast
-    a, b = values[0], values[-1]
-    if a == b and len(values) >= 2:
-        a, b = values[0], values[1]
-    return a, b

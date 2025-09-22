@@ -80,13 +80,6 @@ class AttributeSchema(BaseModel):
     )
 
 @dataclass
-class DatasetBuildPlan:
-    """Configuration for producing the CSV."""
-    overrides: Optional[Dict[str, Sequence[Any]]] = None      # to narrow/step any dimension(s)
-    ab_test_factors: Sequence[str] = ("gap_length", "device_speed")  # which factors to AB-test (2 variants each)
-    extra_result_columns: Sequence[str] = ("result_score", "result_label", "notes")
-    
-@dataclass
 class DatasetBuildPlanOverrides:
     gap_width: Optional[Sequence[float]] = None
     gap_depth: Optional[Sequence[float]] = None
@@ -96,9 +89,18 @@ class DatasetBuildPlanOverrides:
     device_height: Optional[Sequence[float]] = None
     device_angle: Optional[Sequence[float]] = None
     device_speed: Optional[Sequence[float]] = None
+
+@dataclass
+class DatasetBuildPlan:
+    """Configuration for producing the CSV."""
+    overrides: Optional[DatasetBuildPlanOverrides] = None      # to narrow/step any dimension(s)
+    bandit_test_factors: Sequence[str] = ("gap_length", "device_speed")  # which factors to bandit-test (multiple variants each)
+    extra_result_columns: Sequence[str] = ("result_score", "result_label", "notes")
     
 """
 Constants for building trial grids and dataframes.
+
+Currently, factors is separate from overrides as both can be modified later.
 """
 FACTORS = [
     "gap_width",
@@ -111,6 +113,7 @@ FACTORS = [
     "device_speed",
 ]
 
+BASIC_BANDIT_FACTORS = ("gap_length", "device_speed")
 BASIC_LONGITUDINAL_OVERRIDES = DatasetBuildPlanOverrides(
     gap_width=[0.0, 2.0, 5.0, 10.0, 20.0, 30.0],
     gap_depth=[10.0, 25.0, 50.0],

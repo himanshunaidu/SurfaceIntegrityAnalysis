@@ -17,9 +17,9 @@ from pydantic import BaseModel, Field, ConfigDict
 # - Additional Issue Characteristics: Gap Slope
 # - Environment Characteristics: Lighting Conditions, Weather Conditions (may not be relevant for lab-controlled datasets)
 
-class Dataset(BaseModel):
-    model_config = ConfigDict(extra="forbid")  # keep the CSV tidy: no unknown columns
-
+class AttributeSchema(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    
     # Required row identifier
     id: UUID = Field(
         default_factory=uuid4,

@@ -95,7 +95,7 @@ class DatasetBuildPlan:
     """Configuration for producing the CSV."""
     overrides: Optional[DatasetBuildPlanOverrides] = None      # to narrow/step any dimension(s)
     bandit_test_factors: Sequence[str] = ("gap_length", "device_speed")  # which factors to bandit-test (multiple variants each)
-    extra_result_columns: Sequence[str] = ("result_score", "result_label", "notes")
+    extra_result_columns: Sequence[str] = ("status", "notes", "single_depth_result", "depth_fusion_result", "point_cloud_result", "polygon_mesh_result")
     
 """
 Constants for building trial grids and dataframes.
@@ -103,24 +103,24 @@ Constants for building trial grids and dataframes.
 Currently, factors is separate from overrides as both can be modified later.
 """
 FACTORS = [
-    "gap_width",
     "gap_depth",
+    "surface_height_difference",
+    "gap_width",
     "gap_orientation",
     "gap_length",
-    "surface_height_difference",
     "device_height",
     "device_angle",
     "device_speed",
 ]
 
-BASIC_BANDIT_FACTORS = ("gap_length", "device_speed")
+BASIC_BANDIT_FACTORS = ("gap_length", "device_speed", "device_height")
 BASIC_LONGITUDINAL_OVERRIDES = DatasetBuildPlanOverrides(
-    gap_width=[0.0, 2.0, 5.0, 10.0, 20.0, 30.0],
-    gap_depth=[10.0, 25.0, 50.0],
+    gap_width=[0.0, 5.0, 10.0, 20.0, 30.0],
+    gap_depth=[25.0, 0.0],
     gap_orientation=["longitudinal"],#, "transverse", "oblique"],
-    gap_length=[0.0, 100.0, 500.0],
+    gap_length=[160.0],
     surface_height_difference=[0.0, 5.0, 10.0, 20.0],
-    device_height=[1080.0, 1370.0],
+    device_height=[810.0],
     device_angle=[60.0],
-    device_speed=[0.4, 0.8, 1.6]
+    device_speed=[0.6] # We will run multiple trials at different speeds, so we ignore this for naming (only 0.6 m/s here)
 )

@@ -119,8 +119,9 @@ def save_schema(build_plan: DatasetBuildPlan, factors: Sequence[str], bandit_fac
 if __name__ == "__main__":
     plan = DatasetBuildPlan(overrides=BASIC_LONGITUDINAL_OVERRIDES, bandit_test_factors=BASIC_BANDIT_FACTORS)
     
-    NAMING_FACTORS = ["gap_width", "gap_depth", "surface_height_difference"]
-    OTHER_FACTORS = [f for f in FACTORS if f not in NAMING_FACTORS]
+    NAMING_FACTORS = ["gap_depth", "surface_height_difference", "gap_width"]
+    # OTHER_FACTORS = [f for f in FACTORS if f not in NAMING_FACTORS]
+    OTHER_FACTORS = ["device_speed"] # Only this has two values
     trial_namer = get_default_trial_namer(plan.overrides, NAMING_FACTORS, OTHER_FACTORS)
 
     # trial names like "1_1", "1_2", ... based on row index

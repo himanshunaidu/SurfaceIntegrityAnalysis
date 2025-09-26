@@ -46,12 +46,12 @@ def get_default_trial_namer(overrides: DatasetBuildPlanOverrides, factors: Seque
         factor_values[factor] = vals
     
     def namer(i: int, combo: Dict[str, Any]) -> str:
-        parts = [f"{factor_values[factor].index(combo[factor]) + 1}" for factor in factors if factor not in other_factors]
-        name = "_".join(parts)
+        parts = [f"{factor_values[factor].index(combo[factor])}" for factor in factors if factor not in other_factors]
+        name = "-".join(parts)
         other_part = [factor_values[factor].index(combo[factor]) for factor in other_factors if factor in combo]
         other_index = "".join(str(x) for x in other_part) if other_part else None
         if other_index:
-            name += f"_{other_index}"
+            name += f"-{other_index}"
         return name
 
     return namer

@@ -15,10 +15,14 @@ device       = o3d.core.Device("CPU:0")  # or "CUDA:0"
 depth_scale  = 1000.0    # meters per depth unit; set to your data
 depth_max    = 200.0        # far clip in meters
 
+# IMG_WIDTH = 1920
+# IMG_HEIGHT = 1440
+# DEPTH_WIDTH = 256
+# DEPTH_HEIGHT = 192
 DEPTH_WIDTH = 1920
 DEPTH_HEIGHT = 1440
-IMG_WIDTH = 256
-IMG_HEIGHT = 192
+IMG_WIDTH = 1920
+IMG_HEIGHT = 1440
 scale_x = DEPTH_WIDTH / IMG_WIDTH
 scale_y = DEPTH_HEIGHT / IMG_HEIGHT
 
@@ -27,8 +31,8 @@ scale_y = DEPTH_HEIGHT / IMG_HEIGHT
 #   K      -> o3d.core.Tensor [[fx,0,cx],[0,fy,cy],[0,0,1]] (float64)
 #   T_w_c  -> 4x4 world<-camera (float64)
 #   conf   -> optional numpy/torch array HxW in [0,1] (same resolution as depth)
-DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dataset', 'lab_blocks'))
-FRAMES_PATH = os.path.join(DATASET_PATH, 'dataset.csv')
+DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dataset', 'lab_controlled', 'experiment_4', 'depth_fusion'))
+FRAMES_PATH = os.path.join(DATASET_PATH, 'dataset_234830af9e.csv')
 frames_df = pd.read_csv(FRAMES_PATH)
 frames = []
 for index, row in frames_df.iterrows():
@@ -63,7 +67,9 @@ def mask_depth_by_conf(depth_img_t, conf_np, thr=0):
     d[conf_np < thr] = 0.0                # 0 = invalid in Open3D
     return o3d.t.geometry.Image(o3d.core.Tensor(d, device=device))
 
-frames = frames[360:370]
+start = max(len(frames) - 20, 0)
+frames = frames[start:]
+print(f"Fusing {len(frames)} frames")
 # --- 2) Integrate each frame ---
 print("Start adding frames")
 for f in tqdm(frames, desc="Processing frames", total=len(frames)):
@@ -176,8 +182,8 @@ T_w_c_n = Tc_w_n_cache # np.linalg.inv(np.asarray(Tc_w_n, dtype=np.float64))
 cam_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
 cam_frame.transform(T_w_c_n)
 
-# o3d.visualization.draw([mesh, ls, cam_frame])
-# exit(-1)
+o3d.visualization.draw([mesh, ls, cam_frame])
+exit(-1)
 
 ### Debugging end
 

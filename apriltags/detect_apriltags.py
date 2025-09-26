@@ -11,7 +11,7 @@ def ensure_apriltag_dict():
             "Your OpenCV build lacks AprilTag dictionaries. "
             "Install/upgrade with: pip install --upgrade opencv-contrib-python"
         )
-        
+
 def detect_apriltags(image_path: str):
     ensure_apriltag_dict()
     dic = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11)

@@ -27,6 +27,13 @@ APRIL_TAGS_USED = {
     "TR": 204
 }
 
+TEST_APRIL_TAGS_USED = {
+    "TL": 301,
+    "TR": 302,
+    "BL": 304,
+    "BR": 303
+}
+
 def align_pcd(pcd: o3d.geometry.PointCloud, transform: np.ndarray) -> tuple[o3d.geometry.PointCloud, np.ndarray]:
     """
     Align the point cloud to the camera coordinate system using the given transformation matrix.
@@ -106,16 +113,32 @@ def detect_apriltags(img: Image.Image, aruco_detector=None) -> tuple[np.ndarray,
     
     return corners, ids
 
-if __name__=="__main__":
-    DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_4"))
-    ROW_LABEL = "0-3-3-0-b"
-    
-    MAIN_PATH = os.path.join(DATASET_PATH, "main")
-    PCD_PATH = os.path.join(DATASET_PATH, "pcd")
+def get_depth_at_img_point(depth: np.ndarray, img: Image.Image, x: int, y: int) -> float:
+    """
+    Get the depth value at the given image pixel coordinates (x, y).
+    The depth image size is not the same as the RGB image size. 
+    It is a fraction of the RGB image size, so we need to scale the coordinates accordingly.
+    """
+    depth_height, depth_width = depth.shape
+    img_width, img_height = img.size
 
-    img, depth, mesh, transform, intrinsics = read_main_data(MAIN_PATH, ROW_LABEL)
+    x_depth = int(x * depth_width / img_width)
+    y_depth = int(y * depth_height / img_height)
+
+    if x_depth < 0 or x_depth >= depth_width or y_depth < 0 or y_depth >= depth_height:
+        raise ValueError(f"Depth coordinates out of bounds: ({x_depth}, {y_depth}) for depth size ({depth_width}, {depth_height})")
+
+    depth_value = depth[y_depth, x_depth]
+    return float(depth_value)
+
+def main(dataset_path: str, row_label: str, april_tags_used: dict = APRIL_TAGS_USED):
+    main_path = os.path.join(dataset_path, "main")
+    pcd_path = os.path.join(dataset_path, "pcd")
+    april_tags_used_positions = {v: k for k, v in april_tags_used.items()}
+
+    img, depth, mesh, transform, intrinsics = read_main_data(main_path, row_label)
     # mesh.compute_vertex_normals()
-    pcd = read_pcd(PCD_PATH, ROW_LABEL)
+    pcd = read_pcd(pcd_path, row_label)
     # pcd, adjusted_transform = align_pcd(pcd, transform)
     
     frame_mesh = o3d.geometry.TriangleMesh.create_coordinate_frame().scale(0.1, np.zeros(3))
@@ -133,25 +156,45 @@ if __name__=="__main__":
     april_meshes = []
     for i, corner in enumerate(april_corners):
         tag_id = str(april_ids[i][0])
+        tag_position = april_tags_used_positions.get(int(tag_id), None)
+        if tag_position is None:
+            print(f"Warning: Detected AprilTag ID {tag_id} not in the list of used tags. Skipping this tag.")
+            continue
         
         centroid_2d = np.mean(corner[0], axis=0)
         x_2d, y_2d = int(centroid_2d[0]), int(centroid_2d[1])
         
-        depth = 3.0  # Assume a nominal depth of 1 meter
+        depth_val = get_depth_at_img_point(depth, img, x_2d, y_2d) / 1000.0  # Convert mm to meters
+        if depth_val == 0:
+            print(f"Warning: Depth value is 0 at AprilTag ID {tag_id} location ({x_2d}, {y_2d}). Skipping this tag.")
+            continue
         fx, fy = intrinsics[0, 0], intrinsics[1, 1]
         cx, cy = intrinsics[0, 2], intrinsics[1, 2]
-        
-        x_3d = (x_2d - cx) * depth / fx
-        y_3d = (y_2d - cy) * depth / fy
-        z_3d = depth
-        
+
+        x_3d = (x_2d - cx) * depth_val / fx
+        y_3d = (y_2d - cy) * depth_val / fy
+        z_3d = depth_val
+
         point_camera = np.array([x_3d, y_3d, z_3d, 1.0])
         point_world = transform @ point_camera
         
-        tag_mesh = o3d.geometry.TriangleMesh.create_sphere(radius=0.5)
-        tag_mesh.paint_uniform_color([1, 0, 0])
+        tag_mesh = o3d.geometry.TriangleMesh.create_sphere(radius=0.05)
+        if tag_position == "BL":
+            tag_mesh.paint_uniform_color([0, 1, 0])
+        elif tag_position == "BR":
+            tag_mesh.paint_uniform_color([0, 0, 1])
+        else:
+            tag_mesh.paint_uniform_color([1, 0, 0])
         tag_mesh.translate(point_world[:3])
         april_meshes.append(tag_mesh)
         print(f"AprilTag ID {tag_id} at 2D pixel ({x_2d}, {y_2d}) corresponds to 3D point {point_world[:3]}")
         
     o3d.visualization.draw_geometries([mesh, *april_meshes, frame_mesh.transform(transform), reference_frame_mesh])
+
+if __name__=="__main__":
+    # DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_4"))
+    # ROW_LABEL = "0-3-3-0-b"
+    DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "test"))
+    ROW_LABEL = "Test"
+
+    main(DATASET_PATH, ROW_LABEL, april_tags_used=TEST_APRIL_TAGS_USED)

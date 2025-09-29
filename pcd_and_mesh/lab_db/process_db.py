@@ -112,8 +112,8 @@ if __name__=="__main__":
     
     MAIN_PATH = os.path.join(DATASET_PATH, "main")
     PCD_PATH = os.path.join(DATASET_PATH, "pcd")
-    
-    img, mesh, transform, intrinsics = read_main_data(MAIN_PATH, ROW_LABEL)
+
+    img, depth, mesh, transform, intrinsics = read_main_data(MAIN_PATH, ROW_LABEL)
     # mesh.compute_vertex_normals()
     pcd = read_pcd(PCD_PATH, ROW_LABEL)
     # pcd, adjusted_transform = align_pcd(pcd, transform)
@@ -137,7 +137,7 @@ if __name__=="__main__":
         centroid_2d = np.mean(corner[0], axis=0)
         x_2d, y_2d = int(centroid_2d[0]), int(centroid_2d[1])
         
-        depth = 1.0  # Assume a nominal depth of 1 meter
+        depth = 3.0  # Assume a nominal depth of 1 meter
         fx, fy = intrinsics[0, 0], intrinsics[1, 1]
         cx, cy = intrinsics[0, 2], intrinsics[1, 2]
         

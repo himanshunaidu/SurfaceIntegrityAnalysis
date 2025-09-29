@@ -53,6 +53,48 @@ def read_rgb(dir_path: str, row_trial_name: str) -> Image.Image:
     print(f"Loaded RGB image from {img_path} with size {img.size} for trial '{row_trial_name}'")
     return img
 
+def read_depth(dir_path: str, row_trial_name: str) -> np.ndarray:
+    """
+    Reads the depth image from the given directory.
+    """
+    if not os.path.exists(dir_path):
+        raise FileNotFoundError(f"Main dir not found: {dir_path}")
+
+    # Currently, the depth image can have any name, but it is placed alone in a folder as a png image.
+    depth_files = glob.glob(os.path.join(dir_path, "*.png"))
+    if not depth_files:
+        raise FileNotFoundError(f"No PNG depth image found in dir: {dir_path}")
+    depth_path = depth_files[0]
+
+    depth = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
+    if depth is None:
+        raise ValueError(f"Failed to load depth image: {depth_path}")
+
+    print(f"Loaded depth image from {depth_path} with shape {depth.shape} for trial '{row_trial_name}'")
+    print(f"Image format: {depth.dtype}, min depth: {np.min(depth)}, max depth: {np.max(depth)}")
+    return depth
+
+def read_confidence(dir_path: str, row_trial_name: str) -> np.ndarray:
+    """
+    Reads the confidence image from the given directory.
+    """
+    if not os.path.exists(dir_path):
+        raise FileNotFoundError(f"Main dir not found: {dir_path}")
+
+    # Currently, the confidence image can have any name, but it is placed alone in a folder as a png image.
+    conf_files = glob.glob(os.path.join(dir_path, "*.png"))
+    if not conf_files:
+        raise FileNotFoundError(f"No PNG confidence image found in dir: {dir_path}")
+    conf_path = conf_files[0]
+
+    confidence = cv2.imread(conf_path, cv2.IMREAD_UNCHANGED)
+    if confidence is None:
+        raise ValueError(f"Failed to load confidence image: {conf_path}")
+
+    print(f"Loaded confidence image from {conf_path} with shape {confidence.shape} for trial '{row_trial_name}'")
+    print(f"Image format: {confidence.dtype}, min confidence: {np.min(confidence)}, max confidence: {np.max(confidence)}")
+    return confidence
+
 def read_mesh(dir_path: str, row_trial_name: str) -> o3d.geometry.TriangleMesh:
     """
     Reads the mesh file (PLY format) from the given directory.
@@ -117,7 +159,7 @@ def read_intrinsics(dir_path: str, row_trial_name: str) -> np.ndarray:
     print(f"Loaded intrinsics matrix from {intrinsics_path} for trial '{row_trial_name}':\n{intrinsics}")
     return intrinsics
 
-def read_main_data(dir_path: str, row_trial_name: str) -> tuple[Image.Image, o3d.geometry.TriangleMesh, pd.DataFrame, pd.DataFrame]:
+def read_main_data(dir_path: str, row_trial_name: str) -> tuple[Image.Image, np.ndarray, o3d.geometry.TriangleMesh, pd.DataFrame, pd.DataFrame]:
     """
     Reads the RGB image and mesh file (PLY format) from the main trial directory.
     """
@@ -127,10 +169,14 @@ def read_main_data(dir_path: str, row_trial_name: str) -> tuple[Image.Image, o3d
     
     img_dir_path = os.path.join(row_path, "rgb")
     mesh_dir_path = os.path.join(row_path, "mesh")
+    depth_dir_path = os.path.join(row_path, "depth")
+    confidence_dir_path = os.path.join(row_path, "confidence")
 
     img = read_rgb(img_dir_path, row_trial_name)
     mesh = read_mesh(mesh_dir_path, row_trial_name)
     transform = read_transform(row_path, row_trial_name)
     intrinsics = read_intrinsics(row_path, row_trial_name)
+    depth = read_depth(depth_dir_path, row_trial_name)
+    # confidence = read_confidence(confidence_dir_path, row_trial_name)
 
-    return img, mesh, transform, intrinsics
+    return img, depth, mesh, transform, intrinsics

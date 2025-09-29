@@ -121,6 +121,7 @@ def get_depth_at_img_point(depth: np.ndarray, img: Image.Image, x: int, y: int) 
     """
     depth_height, depth_width = depth.shape
     img_width, img_height = img.size
+    print(f"Depth image size: ({depth_width}, {depth_height}), RGB image size: ({img_width}, {img_height})")
 
     x_depth = int(x * depth_width / img_width)
     y_depth = int(y * depth_height / img_height)
@@ -131,6 +132,49 @@ def get_depth_at_img_point(depth: np.ndarray, img: Image.Image, x: int, y: int) 
     depth_value = depth[y_depth, x_depth]
     return float(depth_value)
 
+def get_point_2d_from_pixel(img: Image.Image, x: int, y: int) -> np.ndarray:
+    """
+    Get the 2D point from the given image pixel coordinates (x, y).
+    
+    Currently, the image is not resized or rotated, so the pixel coordinates are the same as the image coordinates.
+    """
+    img_width, img_height = img.size
+
+    if x < 0 or x >= img_width or y < 0 or y >= img_height:
+        raise ValueError(f"Image coordinates out of bounds: ({x}, {y}) for image size ({img_width}, {img_height})")
+    
+    return np.array([x, y])
+
+def draw_circle_on_image(img: Image.Image, x: int, y: int, radius: int = 10, color: tuple = (255, 0, 0)) -> Image.Image:
+    """
+    Draw a circle on the image at the given pixel coordinates (x, y).
+    """
+    img_with_circle = img.copy()
+    draw = ImageDraw.Draw(img_with_circle)
+    left_up_point = (x - radius, y - radius)
+    right_down_point = (x + radius, y + radius)
+    draw.ellipse([left_up_point, right_down_point], outline=color, width=3)
+    return img_with_circle
+
+def get_world_point_from_depth(depth: np.ndarray, img: Image.Image, intrinsics: np.ndarray, transform: np.ndarray, x: int, y: int) -> np.ndarray:
+    """
+    Get the world point from the given depth image and camera intrinsics at the pixel coordinates (x, y).
+    """
+    depth_value = get_depth_at_img_point(depth, img, x, y) / 1000.0  # Convert mm to meters
+    image_point = np.array([x, y, 1.0])
+    ray = np.linalg.inv(intrinsics) @ image_point
+    ray /= np.linalg.norm(ray)
+    
+    camera_point = ray * depth_value
+    camera_point[1] *= -1  # Invert y-axis to convert from ARKit to Open3D coordinate system.
+    camera_point[2] *= -1  # Invert z-axis to convert from ARKit to Open3D coordinate system.
+    
+    camera_point_homogeneous = np.hstack((camera_point, 1.0))
+    
+    world_point = transform @ camera_point_homogeneous
+    return world_point[:3]
+    
+
 def main(dataset_path: str, row_label: str, april_tags_used: dict = APRIL_TAGS_USED):
     main_path = os.path.join(dataset_path, "main")
     pcd_path = os.path.join(dataset_path, "pcd")
@@ -140,6 +184,7 @@ def main(dataset_path: str, row_label: str, april_tags_used: dict = APRIL_TAGS_U
     # mesh.compute_vertex_normals()
     pcd = read_pcd(pcd_path, row_label)
     # pcd, adjusted_transform = align_pcd(pcd, transform)
+    inverted_intrinsics = np.linalg.inv(intrinsics)
     
     frame_mesh = o3d.geometry.TriangleMesh.create_coordinate_frame().scale(0.1, np.zeros(3))
     reference_frame_mesh = o3d.geometry.TriangleMesh.create_coordinate_frame().scale(0.2, np.zeros(3))
@@ -164,27 +209,14 @@ def main(dataset_path: str, row_label: str, april_tags_used: dict = APRIL_TAGS_U
         centroid_2d = np.mean(corner[0], axis=0)
         x_2d, y_2d = int(centroid_2d[0]), int(centroid_2d[1])
         
-        depth_val = get_depth_at_img_point(depth, img, x_2d, y_2d) / 1000.0  # Convert mm to meters
-        if depth_val == 0:
-            print(f"Warning: Depth value is 0 at AprilTag ID {tag_id} location ({x_2d}, {y_2d}). Skipping this tag.")
-            continue
-        fx, fy = intrinsics[0, 0], intrinsics[1, 1]
-        cx, cy = intrinsics[0, 2], intrinsics[1, 2]
+        x_2d, y_2d = get_point_2d_from_pixel(img, x_2d, y_2d)
+        point_world = get_world_point_from_depth(depth, img, intrinsics, transform, x_2d, y_2d)
+        april_centroids_3d.append(point_world)
 
-        x_3d = (x_2d - cx) * depth_val / fx
-        y_3d = (y_2d - cy) * depth_val / fy
-        z_3d = depth_val
-
-        point_camera = np.array([x_3d, y_3d, z_3d, 1.0])
-        point_world = transform @ point_camera
-        
         tag_mesh = o3d.geometry.TriangleMesh.create_sphere(radius=0.05)
-        if tag_position == "BL":
-            tag_mesh.paint_uniform_color([0, 1, 0])
-        elif tag_position == "BR":
-            tag_mesh.paint_uniform_color([0, 0, 1])
-        else:
-            tag_mesh.paint_uniform_color([1, 0, 0])
+        if tag_position == "BL": tag_mesh.paint_uniform_color([0, 1, 0])
+        elif tag_position == "BR": tag_mesh.paint_uniform_color([0, 0, 1])
+        else: tag_mesh.paint_uniform_color([1, 0, 0])
         tag_mesh.translate(point_world[:3])
         april_meshes.append(tag_mesh)
         print(f"AprilTag ID {tag_id} at 2D pixel ({x_2d}, {y_2d}) corresponds to 3D point {point_world[:3]}")

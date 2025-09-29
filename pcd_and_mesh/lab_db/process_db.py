@@ -13,6 +13,7 @@ import cv2
 import open3d as o3d
 
 from utils.read_utils import read_pcd, read_rgb, read_mesh, read_transform, read_intrinsics, read_main_data
+from utils.mesh_crop_utils import get_crop_anchors
 
 """
 NOTE: The point cloud is read from a dedicated point cloud directory.
@@ -199,6 +200,7 @@ def main(dataset_path: str, row_label: str, april_tags_used: dict = APRIL_TAGS_U
     # Mark the centroids in the mesh using intrinsics and transform
     april_centroids_3d = []
     april_meshes = []
+    april_tags_with_positions = {}
     for i, corner in enumerate(april_corners):
         tag_id = str(april_ids[i][0])
         tag_position = april_tags_used_positions.get(int(tag_id), None)
@@ -212,15 +214,23 @@ def main(dataset_path: str, row_label: str, april_tags_used: dict = APRIL_TAGS_U
         x_2d, y_2d = get_point_2d_from_pixel(img, x_2d, y_2d)
         point_world = get_world_point_from_depth(depth, img, intrinsics, transform, x_2d, y_2d)
         april_centroids_3d.append(point_world)
-
-        tag_mesh = o3d.geometry.TriangleMesh.create_sphere(radius=0.05)
-        if tag_position == "BL": tag_mesh.paint_uniform_color([0, 1, 0])
-        elif tag_position == "BR": tag_mesh.paint_uniform_color([0, 0, 1])
-        else: tag_mesh.paint_uniform_color([1, 0, 0])
-        tag_mesh.translate(point_world[:3])
-        april_meshes.append(tag_mesh)
-        print(f"AprilTag ID {tag_id} at 2D pixel ({x_2d}, {y_2d}) corresponds to 3D point {point_world[:3]}")
         
+        april_tags_with_positions[tag_position] = point_world[:3]
+    
+    top_left = april_tags_with_positions.get("TL", None)
+    top_right = april_tags_with_positions.get("TR", None)
+    bottom_left = april_tags_with_positions.get("BL", None)
+    bottom_right = april_tags_with_positions.get("BR", None)
+    top_left, top_right, bottom_left, bottom_right = get_crop_anchors(top_left, top_right, bottom_left, bottom_right)
+    anchor_colors = [(1, 0, 0), (1, 0.5, 0), (0, 1, 0), (0, 0, 1)]
+    # Add april meshes
+    for anchor, color in zip([top_left, top_right, bottom_left, bottom_right], anchor_colors):
+        if anchor is None: continue
+        anchor_mesh = o3d.geometry.TriangleMesh.create_sphere(radius=0.05)
+        anchor_mesh.paint_uniform_color(color)
+        anchor_mesh.translate(anchor)
+        april_meshes.append(anchor_mesh)
+    
     o3d.visualization.draw_geometries([mesh, *april_meshes, frame_mesh.transform(transform), reference_frame_mesh])
 
 if __name__=="__main__":

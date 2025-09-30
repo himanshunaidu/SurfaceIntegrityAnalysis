@@ -179,7 +179,7 @@ if __name__ == "__main__":
         AttributeSchema.Columns.GAP_WIDTH.value, AttributeSchema.Columns.BOARD_PLACEMENT.value
     ]
     # OTHER_FACTORS = [f for f in FACTORS if f not in NAMING_FACTORS]
-    OTHER_FACTORS = [AttributeSchema.Columns.DEVICE_SPEED.value] # Only this has two values
+    OTHER_FACTORS = [] # Only this has two values
     trial_namer = get_default_trial_namer(plan.overrides, NAMING_FACTORS, OTHER_FACTORS)
 
     # trial names like "1_1", "1_2", ... based on row index

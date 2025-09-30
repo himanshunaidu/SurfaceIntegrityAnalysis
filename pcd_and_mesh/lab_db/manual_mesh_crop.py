@@ -41,11 +41,10 @@ def load_lab_db_frames(dataset_path: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     
     return df_main, df_results
 
-def load_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *, 
+def process_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *, 
                     mesh_dir: str = 'mesh', output_dir: str = 'mesh_cropped') -> None:
     """
-    Loads all mesh files from the dataset path based on the database results frame.
-    Returns a list of file paths to the mesh files.
+    Loads all mesh files from the dataset path based on the database results frame and opens them for manual cropping.
     
     Note: The db_results_frame contains column 'trial_name' based on which the directory structure is built (with some differences).
     Each row in db_results_frame corresponds to multiple subdirectories in dataset_path, and within those, the mesh files are located in mesh_dir.
@@ -57,7 +56,6 @@ def load_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
     subtrial_directories.sort()
     subtrial_directory_names = [os.path.basename(d) for d in subtrial_directories if os.path.isdir(d)]
     print(f"Found {len(subtrial_directory_names)} subtrial directories in {dataset_path}")
-    print(f"E.g., first 5: {subtrial_directory_names[:5]}")
     for index, row in db_results_frame.iterrows():
         trial_name = row['trial_name']
         row_subtrials = [d for d in subtrial_directory_names if d.startswith(trial_name)]
@@ -74,13 +72,23 @@ def load_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
 
 def setup_mesh_crop(db_results_frame: pd.DataFrame, db_results_index: int,
     dataset_path: str, row_label: str, *, 
-    mesh_dir: str = 'mesh', output_dir: str = 'mesh_cropped') -> None:
+    mesh_dir: str = 'mesh', output_dir: str = 'mesh_cropped', repeat_crop: bool = False) -> None:
     """
     Sets up the manual mesh cropping environment by getting the mesh, and opening the visualizer with editing capabilities.
     """
     row_path = os.path.join(dataset_path, row_label)
     if not os.path.exists(row_path):
         raise FileNotFoundError(f"Row path not found: {row_path}")
+    
+    # Create output directory if it doesn't exist
+    output_path = os.path.join(row_path, output_dir)
+    # But if it exists, contains a cropped mesh and repeat_crop is False, skip
+    if os.path.exists(output_path) and not repeat_crop:
+        mesh_cropped_files = glob.glob(os.path.join(output_path, "*.ply"))
+        if mesh_cropped_files:
+            print(f"Cropped mesh already exists in {output_path}. Skipping cropping for row '{row_label}'.")
+            return
+    os.makedirs(output_path, exist_ok=True)
     
     mesh_path = os.path.join(row_path, mesh_dir)
     if not os.path.exists(mesh_path):
@@ -100,10 +108,9 @@ def setup_mesh_crop(db_results_frame: pd.DataFrame, db_results_index: int,
     
     print(f"Loaded mesh from {mesh_file} with {len(mesh.vertices)} vertices and {len(mesh.triangles)} triangles for row '{row_label}'")
     
-    # Create output directory if it doesn't exist
-    output_path = os.path.join(row_path, output_dir)
-    os.makedirs(output_path, exist_ok=True)
-    
+    mesh.compute_vertex_normals()
+    # mesh.compute_triangle_normals()
+    # mesh.paint_uniform_color([0.7, 0.7, 0.7])
     # Visualize the mesh with editing capabilities
     o3d.visualization.draw_geometries_with_editing([mesh])
     
@@ -129,4 +136,4 @@ if __name__=="__main__":
     print(f"Loaded lab database with {len(db_main_frame)} entries.")
 
     dataset_mesh_path = os.path.join(DATASET_PATH, "main")
-    load_mesh_files(dataset_mesh_path, db_results_frame)
+    process_mesh_files(dataset_mesh_path, db_results_frame)

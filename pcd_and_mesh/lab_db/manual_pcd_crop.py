@@ -68,8 +68,11 @@ def process_pcd_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
         for pcd_file in row_pcds:
             # Setup pcd cropping for this file
             setup_pcd_crop(db_results_frame, index, dataset_path, pcd_file[:-4], pcd_dir=pcd_dir, output_dir=output_dir)
+            
+            update_results_csv(db_results_frame, dataset_path)
         
         print(f"Completed processing for row index {index}, trial_name '{trial_name}'. {len(row_pcds)} subtrials processed.")
+        update_results_csv(db_results_frame, dataset_path)
 
 def setup_pcd_crop(db_results_frame: pd.DataFrame, db_results_index: int,
     dataset_path: str, row_label: str, *, 
@@ -120,6 +123,13 @@ def setup_pcd_crop(db_results_frame: pd.DataFrame, db_results_index: int,
     db_results_frame.at[db_results_index, ResultColumns.POINT_CLOUD_AVAILABLE.value] = True
     print(f"Updated DataFrame for row '{row_label}': point_cloud_number = {current_point_cloud_number + 1}, point_cloud_available = True")
     
+def update_results_csv(db_results_frame: pd.DataFrame, dataset_path: str, *, results_file: str = 'lab_db_results.csv') -> None:
+    """
+    Saves the updated results DataFrame back to the CSV file.
+    """
+    out_path = os.path.join(dataset_path, results_file)
+    db_results_frame.to_csv(out_path, index=False)
+    print(f"Wrote updated results DataFrame with {len(db_results_frame)} entries to {out_path}")
 
 if __name__=="__main__":
     DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_4"))

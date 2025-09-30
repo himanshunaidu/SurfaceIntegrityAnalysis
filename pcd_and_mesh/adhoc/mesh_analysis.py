@@ -8,7 +8,7 @@ from sklearn.cluster import DBSCAN
 from utils.plane import get_plane_mesh, get_viz_with_transparency
 from utils.stats import get_array_stats
 
-DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dataset", "lab_controlled", "experiment_6"))
+DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_6"))
 ROW_PATH = os.path.join(DATASET_PATH, "main", "0-3-4-1-a")
 MESH_PATH = os.path.join(ROW_PATH, "mesh_cropped")
 MESH_FILE_PATH = glob.glob(os.path.join(MESH_PATH, "*.ply"))[0]  # Assuming one .ply file per row
@@ -54,11 +54,12 @@ angle_deg = np.degrees(np.arccos(cosang))
 print(get_array_stats(angle_deg))
 
 # Get thresholds using robust statistics (median + MAD)
-depth_thr = 0.004   # meters
+depth_thr = 0.005   # meters
 near_plane = np.abs(signed_dist) < 0.05  # optional gate to ignore tall objects; tune or drop
 base = angle_deg[near_plane] if np.any(near_plane) else angle_deg
 med = np.median(base)
 mad = 1.4826 * np.median(np.abs(base - med)) if base.size else 0.0
+print(f"Angle median = {med:.2f} deg, MAD = {mad:.2f} deg")
 angle_thr = max(15, med + 3*mad)
 
 print(f"Depth threshold = {depth_thr} m")
@@ -66,7 +67,7 @@ print(f"Angle threshold = {angle_thr} deg")
 
 unsigned_dist = np.abs(signed_dist)
 angle_issue_mask = angle_deg > angle_thr
-depth_issue_mask = True#unsigned_dist > depth_thr
+depth_issue_mask = unsigned_dist > depth_thr
 issue_mask = angle_issue_mask & depth_issue_mask
 
 T = np.asarray(mesh.triangles)

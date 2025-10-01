@@ -7,12 +7,25 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from utils.plane import get_plane_mesh, get_viz_with_transparency
 
-DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dataset", "deepwalk"))
-PCD_PATH = os.path.join(DATASET_PATH, "2_138312.0", "ply_cropped.ply")
+DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "dataset", "lab_controlled", "experiment_6"))
+PCD_PATH = os.path.join(DATASET_PATH, "pcd_cropped", "0-0-3-1-c.ply")
 pcd_original = o3d.io.read_point_cloud(PCD_PATH)
 
 # Downsample
 pcd = pcd_original.voxel_down_sample(voxel_size=0.01)
+pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+pcd.orient_normals_to_align_with_direction([0.0, 0.0, 1.0])
+
+# Detect boundary points
+# radius and max_nn: Hybrid nearest search parameters
+# angle_threshold: Maximum angle between normals to be considered a boundary point
+pcd_t = o3d.t.geometry.PointCloud.from_legacy(pcd)
+boundary_pcd, boundary_mask = pcd_t.compute_boundary_points(radius=0.1, max_nn=30, angle_threshold=45.0)
+
+# Create a new point cloud without the detected boundary points, using the mask
+pcd = pcd.select_by_index(np.where(~boundary_mask.numpy())[0])
+# o3d.visualization.draw_geometries([pcd])
+# exit(-1)
 
 # o3d.visualization.draw_geometries([pcd])
 # Remove statistical outliers (tune nb_neighbors/std_ratio for your density)
@@ -56,16 +69,23 @@ plane_rot_model, inliers_rot = pcd_rot.segment_plane(distance_threshold=0.01,
                                          ransac_n=3,
                                          num_iterations=1000)
 plane_rot_mesh = get_plane_mesh(pcd_rot, plane_rot_model, inliers_rot, side_length=5)
-# o3d.visualization.draw_geometries([pcd_rot, plane_rot_mesh])
+# o3d.visualization.draw_geometries([pcd_rot])
+# exit(-1)
 
 pcd_rot_points = np.asarray(pcd_rot.points)
 pcd_rot_xy = pcd_rot_points[:, :2]
 pcd_rot_z = pcd_rot_points[:, 2]
+pcd_rot_colors = np.asarray(pcd_rot.colors)
 
 # Rasterize
 cell = 0.01
 xy_min = pcd_rot_xy.min(axis=0)
 xy_max = pcd_rot_xy.max(axis=0)
+nx = int(np.ceil((xy_max[0] - xy_min[0]) / cell))
+ny = int(np.ceil((xy_max[1] - xy_min[1]) / cell))
+# Remove boundaries (4% margin)
+xy_min += 0.04 * (xy_max - xy_min)
+xy_max -= 0.04 * (xy_max - xy_min)
 nx = int(np.ceil((xy_max[0] - xy_min[0]) / cell))
 ny = int(np.ceil((xy_max[1] - xy_min[1]) / cell))
 ## Map points to grid indices
@@ -75,10 +95,12 @@ lin = ix + iy * nx
 ## Height map
 hmin = np.full(nx*ny, np.nan, dtype=float)
 hmean = np.full(nx*ny, np.nan, dtype=float)
+rgb = np.zeros((nx*ny, 3), dtype=float)
 count = np.zeros(nx*ny, dtype=int)
-for idx, z_val in zip(lin, pcd_rot_z):
+for idx, color, z_val in zip(lin, pcd_rot_colors, pcd_rot_z):
     if np.isnan(hmin[idx]) or z_val < hmin[idx]:
         hmin[idx] = z_val
+        rgb[idx] = color
     if np.isnan(hmean[idx]):
         hmean[idx] = z_val
     else:
@@ -87,6 +109,14 @@ for idx, z_val in zip(lin, pcd_rot_z):
 Hmin = hmin.reshape(ny, nx)
 Hmean = hmean.reshape(ny, nx)
 Count = count.reshape(ny, nx)
+
+# Visualize rgb map
+import matplotlib.pyplot as plt
+plt.figure(figsize=(6, 6))
+plt.title("RGB Map")
+plt.imshow(rgb.reshape(ny, nx, 3), origin='lower')
+plt.show()
+exit(-1)
 
 H = Hmin.copy()
 mask_valid = ~np.isnan(H)

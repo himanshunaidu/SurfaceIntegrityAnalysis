@@ -8,21 +8,23 @@ from sklearn.cluster import DBSCAN
 from utils.plane import get_plane_mesh, get_viz_with_transparency
 from utils.stats import get_array_stats
 
-# DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dataset", "lab_controlled", "experiment_2"))
-# ROW_PATH = os.path.join(DATASET_PATH, "pcd", "pcd_cropped")
-# PCD_FILE_PATH = os.path.join(ROW_PATH, "4_1_0_1.ply")
-DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dataset", "lab_controlled", "adhoc"))
-PCD_FILE_PATH = os.path.join(DATASET_PATH, "4_1_0_1_adhoc_cropped.ply")
+DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_6"))
+ROW_PATH = os.path.join(DATASET_PATH, "pcd_cropped")
+PCD_FILE_PATH = os.path.join(ROW_PATH, "0-0-3-1-c.ply")
+# ROW_PATH = os.path.join(ROW_PATH, "exp")
+# PCD_FILE_PATH = os.path.join(ROW_PATH, "cropped_1.ply")
+# DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "adhoc"))
+# PCD_FILE_PATH = os.path.join(DATASET_PATH, "4_1_0_1_adhoc_cropped.ply")
 
-# --- Step 1: Load the mesh ---
+# --- Step 1: Load the pcd ---
 pcd_original = o3d.io.read_point_cloud(PCD_FILE_PATH)
 print("Loaded pcd from:", PCD_FILE_PATH)
 
-# Visualize the mesh
+# Visualize the pcd
 # o3d.visualization.draw_geometries_with_editing([pcd_original])
 # exit(-1)
 
-# --- Step 2: Analyze the mesh ---
+# --- Step 2: Analyze the pcd ---
 # Downsample
 pcd = pcd_original.voxel_down_sample(voxel_size=0.01)
 # Remove statistical outliers (tune nb_neighbors/std_ratio for your density)
@@ -82,7 +84,7 @@ angle_thr = max(15.0, med + 3*mad)
 
 # issue_mask = (angle_deg > angle_thr) | (signed_dist < -depth_thr)
 angle_issue_mask = angle_deg > angle_thr
-depth_issue_mask = True#(signed_dist < -depth_thr)
+depth_issue_mask = (signed_dist < -depth_thr)
 issue_mask = angle_issue_mask & depth_issue_mask
 
 # Cluster issues

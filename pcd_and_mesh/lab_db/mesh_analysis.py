@@ -76,6 +76,7 @@ def process_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
     
     for index, row in db_results_frame.iterrows():
         trial_name = row['trial_name']
+        num_issues = 0
         row_subtrials = [d for d in subtrial_directory_names if d.startswith(trial_name)]
         if not row_subtrials:
             # print(f"No subdirectory found for trial_name '{trial_name}' in row index {index}")
@@ -99,14 +100,17 @@ def process_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
             o3d.io.write_triangle_mesh(output_mesh_file, analyzed_mesh)
             print(f"Wrote analyzed mesh to {output_mesh_file}, Issues found: {has_issues}")
             
-            current_polygon_mesh_result = db_results_frame.at[index, ResultColumns.POLYGON_MESH_RESULT.value]
-            if pd.isna(current_polygon_mesh_result) or current_polygon_mesh_result == "":
-                current_polygon_mesh_result = 0
-            db_results_frame.at[index, ResultColumns.POLYGON_MESH_RESULT.value] = current_polygon_mesh_result + (1 if has_issues else 0)
+            if has_issues: num_issues += 1
+            # current_polygon_mesh_result = db_results_frame.at[index, ResultColumns.POLYGON_MESH_RESULT.value]
+            # if pd.isna(current_polygon_mesh_result) or current_polygon_mesh_result == "":
+            #     current_polygon_mesh_result = 0
+            # db_results_frame.at[index, ResultColumns.POLYGON_MESH_RESULT.value] = current_polygon_mesh_result + (1 if has_issues else 0)
+        db_results_frame.at[index, ResultColumns.POLYGON_MESH_RESULT.value] = num_issues
+        print(f"Completed processing for row index {index}, trial_name '{trial_name}'. {num_issues} subtrials with issues.")
 
 def check_mesh_integrity(mesh_file_path: str, *, 
                  depth_thr: float = 0.005, near_plane_thr: float = 0.05, 
-                 min_angle_thr: float = 15.0,
+                 min_angle_thr: float = 10.0,
                  dbscan_eps: float = 0.05, dbscan_min_samples: int = 3,
                  issue_area_percent_thr: float = 0.005) -> tuple[o3d.geometry.TriangleMesh, bool]:
     """
@@ -195,12 +199,12 @@ def check_mesh_integrity(mesh_file_path: str, *,
     logging.info(f"Issue area: {issue_area:.4f} m^2 ({issue_area_percent*100:.2f}%)")
     
     mesh.vertex_colors = o3d.utility.Vector3dVector(vertex_colors)
-    o3d.visualization.draw_geometries([mesh])
+    # o3d.visualization.draw_geometries([mesh])
 
     return mesh, (issue_area_percent > issue_area_percent_thr)
 
 if __name__=="__main__":
-    DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_6"))
+    DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_4"))
     
     logging.basicConfig(
         filename=os.path.join(DATASET_PATH, "mesh_analysis.log"),

@@ -64,7 +64,7 @@ def sync_lab_db_frames_with_mesh_files(dataset_path: str, db_results_frame: pd.D
     subtrial_directories = glob.glob(os.path.join(dataset_path, "*"))
     subtrial_directories.sort()
     subtrial_directory_names = [os.path.basename(d) for d in subtrial_directories if os.path.isdir(d)]
-    print(f"Found {len(subtrial_directory_names)} subtrial directories in {dataset_path}")
+    # print(f"Found {len(subtrial_directory_names)} subtrial directories in {dataset_path}")
     for index, row in db_results_frame.iterrows():
         trial_name = row['trial_name']
         row_subtrials = [d for d in subtrial_directory_names if d.startswith(trial_name)]
@@ -72,7 +72,7 @@ def sync_lab_db_frames_with_mesh_files(dataset_path: str, db_results_frame: pd.D
         num_meshes = 0
         
         if row_subtrials:
-            print(f"Found {len(row_subtrials)} subdirectories for trial_name '{trial_name}' in row index {index}")
+            # print(f"Found {len(row_subtrials)} subdirectories for trial_name '{trial_name}' in row index {index}")
 
             for sub_dir_name in row_subtrials:
                 # Sync mesh cropping status for this subdirectory
@@ -89,7 +89,7 @@ def sync_lab_db_frames_with_mesh_files(dataset_path: str, db_results_frame: pd.D
 
 def check_mesh_crop(db_results_frame: pd.DataFrame, db_results_index: int,
     dataset_path: str, row_label: str, *, 
-    mesh_dir: str = 'mesh', output_dir: str = 'mesh_cropped', repeat_crop: bool = False) -> bool:
+    mesh_dir: str = 'mesh', output_dir: str = 'mesh_cropped', repeat_crop: bool = True) -> bool:
     """
     Checks if there is a cropped mesh with the database results frame.
     """
@@ -198,7 +198,7 @@ def setup_mesh_crop(db_results_frame: pd.DataFrame, db_results_index: int,
     
 
 if __name__=="__main__":
-    DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_6"))
+    DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_4"))
     
     db_main_frame, db_results_frame = load_lab_db_frames(DATASET_PATH)
     print(f"Loaded lab database with {len(db_main_frame)} entries.")
@@ -208,5 +208,5 @@ if __name__=="__main__":
     update_lab_db_frames(DATASET_PATH, db_main_frame, db_results_frame)
     
     db_main_frame, db_results_frame = load_lab_db_frames(DATASET_PATH)
-    # process_mesh_files(dataset_mesh_path, db_results_frame)
-    # sync_lab_db_frames_with_mesh_files(dataset_mesh_path, db_results_frame)
+    process_mesh_files(dataset_mesh_path, db_results_frame)
+    sync_lab_db_frames_with_mesh_files(dataset_mesh_path, db_results_frame)

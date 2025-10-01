@@ -41,6 +41,74 @@ def load_lab_db_frames(dataset_path: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     
     return df_main, df_results
 
+def update_lab_db_frames(dataset_path: str, db_main_frame: pd.DataFrame, db_results_frame: pd.DataFrame) -> None:
+    """
+    Updates the lab database CSV files from the given pandas DataFrames.
+    """
+    if not os.path.exists(dataset_path):
+        raise FileNotFoundError(f"Database file not found: {dataset_path}")
+
+    db_main_path = os.path.join(dataset_path, "lab_db.csv")
+    db_main_frame.to_csv(db_main_path, index=False)
+    print(f"Updated main database CSV file: {db_main_path}")
+
+    db_results_path = os.path.join(dataset_path, "lab_db_results.csv")
+    db_results_frame.to_csv(db_results_path, index=False)
+    print(f"Updated results database CSV file: {db_results_path}")
+
+def sync_lab_db_frames_with_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
+                    mesh_dir: str = 'mesh', output_dir: str = 'mesh_cropped') -> pd.DataFrame:
+    """
+    Syncs the lab database results frame with the actual mesh files present in the dataset path.
+    """
+    subtrial_directories = glob.glob(os.path.join(dataset_path, "*"))
+    subtrial_directories.sort()
+    subtrial_directory_names = [os.path.basename(d) for d in subtrial_directories if os.path.isdir(d)]
+    print(f"Found {len(subtrial_directory_names)} subtrial directories in {dataset_path}")
+    for index, row in db_results_frame.iterrows():
+        trial_name = row['trial_name']
+        row_subtrials = [d for d in subtrial_directory_names if d.startswith(trial_name)]
+        
+        num_meshes = 0
+        
+        if row_subtrials:
+            print(f"Found {len(row_subtrials)} subdirectories for trial_name '{trial_name}' in row index {index}")
+
+            for sub_dir_name in row_subtrials:
+                # Sync mesh cropping status for this subdirectory
+                if check_mesh_crop(db_results_frame, index, dataset_path, sub_dir_name, mesh_dir=mesh_dir, output_dir=output_dir):
+                    num_meshes += 1
+
+        # print(f"Completed syncing for row index {index}, trial_name '{trial_name}'. {len(row_subtrials)} subtrials processed.")
+        # Update the dataframe with number of meshes found
+        db_results_frame.at[index, ResultColumns.POLYGON_MESH_NUMBER.value] = num_meshes
+        db_results_frame.at[index, ResultColumns.POLYGON_MESH_AVAILABLE.value] = (num_meshes > 0)
+        print(f"Updated DataFrame for row '{trial_name}': polygon_mesh_number = {num_meshes}, polygon_mesh_available = {num_meshes > 0}")
+    
+    return db_results_frame
+
+def check_mesh_crop(db_results_frame: pd.DataFrame, db_results_index: int,
+    dataset_path: str, row_label: str, *, 
+    mesh_dir: str = 'mesh', output_dir: str = 'mesh_cropped', repeat_crop: bool = False) -> bool:
+    """
+    Checks if there is a cropped mesh with the database results frame.
+    """
+    row_path = os.path.join(dataset_path, row_label)
+    if not os.path.exists(row_path):
+        raise FileNotFoundError(f"Row path not found: {row_path}")
+    
+    # Check if output directory exists and contains cropped mesh
+    output_path = os.path.join(row_path, output_dir)
+    if os.path.exists(output_path):
+        mesh_cropped_files = glob.glob(os.path.join(output_path, "*.ply"))
+        if mesh_cropped_files:
+            return True
+        else:
+            print(f"No cropped mesh files found in {output_path}.")
+    else:
+        print(f"Output directory not found: {output_path}.")
+    return False
+
 def process_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *, 
                     mesh_dir: str = 'mesh', output_dir: str = 'mesh_cropped') -> None:
     """
@@ -121,19 +189,24 @@ def setup_mesh_crop(db_results_frame: pd.DataFrame, db_results_index: int,
     
     # Update the dataframe to indicate cropping is done
     # Update polygon_mesh_available to True, polygon_mesh_number = polygon_mesh_number + 1
-    current_polygon_mesh_number = db_results_frame.at[db_results_index, ResultColumns.POLYGON_MESH_NUMBER.value]
-    if pd.isna(current_polygon_mesh_number):
-        current_polygon_mesh_number = 0
-    db_results_frame.at[db_results_index, ResultColumns.POLYGON_MESH_NUMBER.value] = current_polygon_mesh_number + 1
-    db_results_frame.at[db_results_index, ResultColumns.POLYGON_MESH_AVAILABLE.value] = True
-    print(f"Updated DataFrame for row '{row_label}': polygon_mesh_number = {current_polygon_mesh_number + 1}, polygon_mesh_available = True")
+    # current_polygon_mesh_number = db_results_frame.at[db_results_index, ResultColumns.POLYGON_MESH_NUMBER.value]
+    # if pd.isna(current_polygon_mesh_number):
+    #     current_polygon_mesh_number = 0
+    # db_results_frame.at[db_results_index, ResultColumns.POLYGON_MESH_NUMBER.value] = current_polygon_mesh_number + 1
+    # db_results_frame.at[db_results_index, ResultColumns.POLYGON_MESH_AVAILABLE.value] = True
+    # print(f"Updated DataFrame for row '{row_label}': polygon_mesh_number = {current_polygon_mesh_number + 1}, polygon_mesh_available = True")
     
 
 if __name__=="__main__":
-    DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_4"))
+    DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_6"))
     
     db_main_frame, db_results_frame = load_lab_db_frames(DATASET_PATH)
     print(f"Loaded lab database with {len(db_main_frame)} entries.")
 
     dataset_mesh_path = os.path.join(DATASET_PATH, "main")
-    process_mesh_files(dataset_mesh_path, db_results_frame)
+    db_results_frame = sync_lab_db_frames_with_mesh_files(dataset_mesh_path, db_results_frame)
+    update_lab_db_frames(DATASET_PATH, db_main_frame, db_results_frame)
+    
+    db_main_frame, db_results_frame = load_lab_db_frames(DATASET_PATH)
+    # process_mesh_files(dataset_mesh_path, db_results_frame)
+    # sync_lab_db_frames_with_mesh_files(dataset_mesh_path, db_results_frame)

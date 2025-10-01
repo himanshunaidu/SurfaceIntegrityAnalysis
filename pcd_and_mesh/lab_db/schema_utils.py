@@ -55,4 +55,3 @@ def get_default_trial_namer(overrides: DatasetBuildPlanOverrides, factors: Seque
         return name
 
     return namer
-    

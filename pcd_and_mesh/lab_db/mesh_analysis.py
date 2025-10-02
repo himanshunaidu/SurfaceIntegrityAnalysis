@@ -90,7 +90,7 @@ def process_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
                 print(f"No mesh files found in {mesh_path} for trial_name '{trial_name}' in row index {index}")
                 continue
             mesh_file = mesh_files[0]  # Assuming one .ply file per subtrial
-            print(f"Analyzing mesh file {mesh_file} for trial_name '{trial_name}' in row index {index}")
+            logging.info(f"Analyzing mesh file {mesh_file} for trial_name '{trial_name}' in row index {index}")
             
             analyzed_mesh, has_issues = check_mesh_integrity(mesh_file)
             

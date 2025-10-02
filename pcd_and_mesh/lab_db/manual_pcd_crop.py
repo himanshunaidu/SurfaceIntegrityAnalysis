@@ -196,4 +196,4 @@ if __name__=="__main__":
     update_results_csv(db_results_frame, DATASET_PATH)
 
     # dataset_pcd_path = os.path.join(DATASET_PATH, "pcd")
-    # process_pcd_files(DATASET_PATH, db_results_frame)
+    process_pcd_files(DATASET_PATH, db_results_frame)

@@ -107,6 +107,11 @@ def analyze_results(combined_df: pd.DataFrame):
     )
     # Filter out rows with zero denominator
     combined_df = combined_df[combined_df[Y_DENOMINATOR_COLUMN] > 0]
+    
+    # Temporary save for debugging
+    combined_df.sort_values(by=[MAIN_GROUP_COLUMN, SUB_GROUP_COLUMN, SIZE_COLUMN, X_COLUMN], inplace=True)
+    combined_df.to_csv("combined_results_debug.csv", index=False)
+    
     if combined_df.empty:
         print("No valid data to analyze after filtering out zero denominators.")
         return

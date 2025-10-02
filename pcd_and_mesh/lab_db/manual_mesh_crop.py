@@ -70,14 +70,12 @@ def sync_lab_db_frames_with_mesh_files(dataset_path: str, db_results_frame: pd.D
         row_subtrials = [d for d in subtrial_directory_names if d.startswith(trial_name)]
         
         num_meshes = 0
-        
-        if row_subtrials:
-            # print(f"Found {len(row_subtrials)} subdirectories for trial_name '{trial_name}' in row index {index}")
-
-            for sub_dir_name in row_subtrials:
-                # Sync mesh cropping status for this subdirectory
-                if check_mesh_crop(db_results_frame, index, dataset_path, sub_dir_name, mesh_dir=mesh_dir, output_dir=output_dir):
-                    num_meshes += 1
+        # if row_subtrials:
+        # print(f"Found {len(row_subtrials)} subdirectories for trial_name '{trial_name}' in row index {index}")
+        for sub_dir_name in row_subtrials:
+            # Sync mesh cropping status for this subdirectory
+            if check_mesh_crop(db_results_frame, index, dataset_path, sub_dir_name, mesh_dir=mesh_dir, output_dir=output_dir):
+                num_meshes += 1
 
         # print(f"Completed syncing for row index {index}, trial_name '{trial_name}'. {len(row_subtrials)} subtrials processed.")
         # Update the dataframe with number of meshes found

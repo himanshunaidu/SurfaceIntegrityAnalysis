@@ -41,6 +41,61 @@ def load_lab_db_frames(dataset_path: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     
     return df_main, df_results
 
+def update_lab_db_frames(dataset_path: str, db_main_frame: pd.DataFrame, db_results_frame: pd.DataFrame) -> None:
+    """
+    Updates the lab database CSV files from the given pandas DataFrames.
+    """
+    if not os.path.exists(dataset_path):
+        raise FileNotFoundError(f"Database file not found: {dataset_path}")
+
+    db_main_path = os.path.join(dataset_path, "lab_db.csv")
+    db_main_frame.to_csv(db_main_path, index=False)
+    print(f"Updated main database CSV file: {db_main_path}")
+
+    db_results_path = os.path.join(dataset_path, "lab_db_results.csv")
+    db_results_frame.to_csv(db_results_path, index=False)
+    print(f"Updated results database CSV file: {db_results_path}")
+
+def sync_lab_db_frames_with_pcd_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
+                    pcd_dir: str = 'pcd', output_dir: str = 'pcd_cropped')-> pd.DataFrame:
+    point_cloud_files = glob.glob(os.path.join(dataset_path, pcd_dir, "*.ply"))
+    point_cloud_files.sort()
+    point_cloud_file_names = [os.path.basename(f) for f in point_cloud_files]
+    print(f"Found {len(point_cloud_file_names)} point cloud files in {os.path.join(dataset_path, pcd_dir)}")
+    
+    for index, row in db_results_frame.iterrows():
+        trial_name = row['trial_name']
+        row_pcds = [f for f in point_cloud_file_names if f.startswith(trial_name)]
+        
+        num_trials = 0
+        for pcd_file in row_pcds:
+            if check_pcd_crop(db_results_frame, index, dataset_path, pcd_file[:-4], pcd_dir=pcd_dir, output_dir=output_dir):
+                num_trials += 1
+        
+        # Update the dataframe with number of point clouds found
+        db_results_frame.at[index, ResultColumns.POINT_CLOUD_NUMBER.value] = num_trials
+        db_results_frame.at[index, ResultColumns.POINT_CLOUD_AVAILABLE.value] = (num_trials > 0)
+        print(f"Updated DataFrame for row index {index}, trial_name '{trial_name}': point_cloud_number = {num_trials}, point_cloud_available = {num_trials > 0}")
+        
+    return db_results_frame
+
+def check_pcd_crop(db_results_frame: pd.DataFrame, db_results_index: int,
+    dataset_path: str, row_label: str, *, 
+    pcd_dir: str = 'pcd', output_dir: str = 'pcd_cropped', repeat_crop: bool = False) -> bool:
+    """
+    Checks if the point cloud for the given row_label has already been cropped and saved.
+    """
+    output_path = os.path.join(dataset_path, output_dir)
+    if os.path.exists(output_path):
+        pcd_file = os.path.join(output_path, f"{row_label}.ply")
+        if os.path.exists(pcd_file):
+            return True
+        else:
+            print(f"PCD file not found: {pcd_file}.")
+    else:
+        print(f"Output directory not found: {output_path}.")
+    return False
+
 def process_pcd_files(dataset_path: str, db_results_frame: pd.DataFrame, *, 
                     pcd_dir: str = 'pcd', output_dir: str = 'pcd_cropped') -> None:
     """
@@ -76,7 +131,7 @@ def process_pcd_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
 
 def setup_pcd_crop(db_results_frame: pd.DataFrame, db_results_index: int,
     dataset_path: str, row_label: str, *, 
-    pcd_dir: str = 'pcd', output_dir: str = 'pcd_cropped', repeat_crop: bool = True) -> None:
+    pcd_dir: str = 'pcd', output_dir: str = 'pcd_cropped', repeat_crop: bool = False) -> None:
     """
     Sets up the manual point cloud cropping environment by getting the point cloud, and opening the visualizer with editing capabilities.
     """    
@@ -136,6 +191,9 @@ if __name__=="__main__":
     
     db_main_frame, db_results_frame = load_lab_db_frames(DATASET_PATH)
     print(f"Loaded lab database with {len(db_main_frame)} entries.")
+    
+    db_results_frame = sync_lab_db_frames_with_pcd_files(DATASET_PATH, db_results_frame)
+    update_results_csv(db_results_frame, DATASET_PATH)
 
     # dataset_pcd_path = os.path.join(DATASET_PATH, "pcd")
-    process_pcd_files(DATASET_PATH, db_results_frame)
+    # process_pcd_files(DATASET_PATH, db_results_frame)

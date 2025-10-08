@@ -5,8 +5,17 @@ import os
 import glob
 import pandas as pd
 
-from schema import AttributeSchema, ResultColumns
-from read import check_mesh_crop, check_pcd_crop
+if __name__ == "__main__":
+    from schema import AttributeSchema, ResultColumns
+    from read import check_mesh_crop, check_pcd_crop
+else:
+    if __package__ is None or __package__ == "":
+        # Assuming running as a script from the parent directory
+        from db.schema import AttributeSchema, ResultColumns
+        from db.read import check_mesh_crop, check_pcd_crop
+    else:
+        from .schema import AttributeSchema, ResultColumns
+        from .read import check_mesh_crop, check_pcd_crop
 
 def update_data_frames(
         dataset_path: str, main_frame: pd.DataFrame, results_frame: pd.DataFrame, *, 

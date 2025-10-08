@@ -7,7 +7,14 @@ import glob
 import numpy as np
 import pandas as pd
 
-from schema import AttributeSchema, ResultColumns
+if __name__ == "__main__":
+    from schema import AttributeSchema, ResultColumns
+else:
+    if __package__ is None or __package__ == "":
+        # Assuming running as a script from the parent directory
+        from db.schema import AttributeSchema, ResultColumns
+    else:
+        from .schema import AttributeSchema, ResultColumns
 
 def load_data_frames(dataset_path: str, *,
         expected_columns: set = None, expected_result_columns: set = None,

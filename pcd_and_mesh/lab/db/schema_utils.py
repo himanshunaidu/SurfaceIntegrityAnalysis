@@ -6,7 +6,14 @@ from typing import Any, Dict, Iterable, List, Sequence, Tuple, Optional
 import functools
 import operator
 
-from schema import AttributeSchema, DatasetBuildPlanOverrides, ResultColumns
+if __name__ == "__main__":
+    from schema import AttributeSchema, DatasetBuildPlanOverrides, ResultColumns
+else:
+    if __package__ is None or __package__ == "":
+        # Assuming running as a script from the parent directory
+        from db.schema import AttributeSchema, DatasetBuildPlanOverrides, ResultColumns
+    else:
+        from .schema import AttributeSchema, DatasetBuildPlanOverrides, ResultColumns
 
 def pick_suggestion_values(field: Field) -> Optional[List[Any]]:
     """

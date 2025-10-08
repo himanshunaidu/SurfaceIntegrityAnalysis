@@ -1,3 +1,7 @@
+"""
+This module contains functions to read various CV data files (PCD, RGB, depth, confidence, mesh, transforms, intrinsics)
+from the lab collected dataset.
+"""
 import os
 import sys
 import glob

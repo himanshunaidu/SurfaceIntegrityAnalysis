@@ -13,23 +13,9 @@ import logging
 
 from utils.plane import get_plane_mesh, get_viz_with_transparency
 from utils.stats import get_array_stats
-from schema import AttributeSchema, ResultColumns, DatasetBuildPlan, DatasetBuildPlanOverrides, FACTORS
-from schema_utils import load_lab_db_frames
-
-def update_lab_db_frames(dataset_path: str, db_main_frame: pd.DataFrame, db_results_frame: pd.DataFrame) -> None:
-    """
-    Updates the lab database CSV files from the given pandas DataFrames.
-    """
-    if not os.path.exists(dataset_path):
-        raise FileNotFoundError(f"Database file not found: {dataset_path}")
-
-    db_main_path = os.path.join(dataset_path, "lab_db.csv")
-    db_main_frame.to_csv(db_main_path, index=False)
-    print(f"Updated main database CSV file: {db_main_path}")
-
-    db_results_path = os.path.join(dataset_path, "lab_db_results.csv")
-    db_results_frame.to_csv(db_results_path, index=False)
-    print(f"Updated results database CSV file: {db_results_path}")
+from db.schema import AttributeSchema, ResultColumns, DatasetBuildPlan, DatasetBuildPlanOverrides, FACTORS
+from db.read import load_data_frames
+from db.update import update_data_frames
 
 def process_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *, 
                     mesh_dir: str = 'mesh_cropped', output_dir: str = 'mesh_analyzed') -> None:
@@ -186,10 +172,10 @@ if __name__=="__main__":
         level=logging.INFO
     )
     
-    db_main_frame, db_results_frame = load_lab_db_frames(DATASET_PATH)
+    db_main_frame, db_results_frame = load_data_frames(DATASET_PATH)
     print(f"Loaded lab database with {len(db_main_frame)} entries.")
     
     dataset_mesh_path = os.path.join(DATASET_PATH, "main")
     process_mesh_files(dataset_mesh_path, db_results_frame)
 
-    update_lab_db_frames(DATASET_PATH, db_main_frame, db_results_frame)
+    update_data_frames(DATASET_PATH, db_main_frame, db_results_frame)

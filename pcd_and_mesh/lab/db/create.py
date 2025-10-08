@@ -171,7 +171,25 @@ def save_schema(build_plan: DatasetBuildPlan, factors: Sequence[str], bandit_fac
         json.dump(schema, f, indent=2)
     print(f"Wrote schema to {out_path}")
 
-if __name__ == "__main__":
+def create(dataset_path: str, *,
+        main_file_name: str = "lab_db.csv", results_file_name: str = "lab_db_results.csv",
+        schema_file_name: str = "lab_db_schema.json"
+    ):
+    """
+    Create the dataset files in the specified directory.
+    
+    dataset_path: Directory to save the dataset files. Must exist. Must not contain existing lab_db.csv or lab_db_results.csv files.
+    """
+    # Setup
+    if not os.path.exists(dataset_path):
+        raise FileNotFoundError(f"Dataset path not found: {dataset_path}")
+    main_file_path = os.path.join(dataset_path, main_file_name)
+    results_file_path = os.path.join(dataset_path, results_file_name)
+    schema_file_path = os.path.join(dataset_path, schema_file_name)
+    if os.path.exists(main_file_path) or os.path.exists(results_file_path):
+        raise FileExistsError(f"Dataset files already exist in {dataset_path}. Please remove them before creating a new dataset.")
+    
+    # Build
     plan = DatasetBuildPlan(overrides=BASIC_LONGITUDINAL_OVERRIDES, bandit_test_factors=BASIC_BANDIT_FACTORS)
 
     NAMING_FACTORS = [
@@ -191,18 +209,15 @@ if __name__ == "__main__":
     # Create main dataframe
     main_df = make_main_dataframe(plan, trial_namer=trial_namer, rows=rows)
     print(main_df.head(5))   # quick peek
-    out_path = os.path.join(os.path.dirname(__file__), "lab_db.csv")
-    main_df.to_csv(out_path, index=False)
-    print(f"Wrote {len(main_df)} trials to {out_path}")
+    main_df.to_csv(main_file_path, index=False)
+    print(f"Wrote {len(main_df)} trials to {main_file_path}")
     
     # Create results dataframe
     results_df = make_results_dataframe(plan, trial_namer=trial_namer, rows=rows)
     print(results_df.head(5))   # quick peek
-    out_path = os.path.join(os.path.dirname(__file__), "lab_db_results.csv")
-    results_df.to_csv(out_path, index=False)
-    print(f"Wrote {len(results_df)} trials to {out_path}")
+    results_df.to_csv(results_file_path, index=False)
+    print(f"Wrote {len(results_df)} trials to {results_file_path}")
 
-    schema_path = os.path.join(os.path.dirname(__file__), "lab_db_schema.json")
     other_details = {
         "naming_function_details": {
             "naming_factors": NAMING_FACTORS,
@@ -210,4 +225,7 @@ if __name__ == "__main__":
             "description": "Trial names are constructed from the indices of the naming factors, with indices of other factors combined into a final index."
         }
     }
-    save_schema(plan, NAMING_FACTORS, BASIC_BANDIT_FACTORS, other_details, schema_path)
+    save_schema(plan, NAMING_FACTORS, BASIC_BANDIT_FACTORS, other_details, schema_file_path)
+
+if __name__ == "__main__":
+    create()

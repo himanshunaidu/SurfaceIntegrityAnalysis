@@ -9,35 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
-from schema import AttributeSchema, ResultColumns, DatasetBuildPlan, DatasetBuildPlanOverrides, FACTORS
-
-def load_lab_db_frames(dataset_path: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Loads the lab database from CSV files into a pandas DataFrame.
-    Currently, there are two filesL: one for main attributes, and one for results.
-    """
-    if not os.path.exists(dataset_path):
-        raise FileNotFoundError(f"Database file not found: {dataset_path}")
-
-    db_main_path = os.path.join(dataset_path, "lab_db.csv")
-    if not os.path.exists(db_main_path):
-        raise FileNotFoundError(f"Database CSV file not found: {db_main_path}")
-    df_main = pd.read_csv(db_main_path)
-    expected_columns = set(AttributeSchema.Columns.__members__.values())
-    missing_columns = expected_columns - set(df_main.columns)
-    if missing_columns:
-        raise ValueError(f"Database is missing expected columns: {missing_columns}")
-    
-    db_results_path = os.path.join(dataset_path, "lab_db_results.csv")
-    if not os.path.exists(db_results_path):
-        raise FileNotFoundError(f"Database results CSV file not found: {db_results_path}")
-    df_results = pd.read_csv(db_results_path)
-    expected_result_columns = set(ResultColumns.__members__.values())
-    missing_result_columns = expected_result_columns - set(df_results.columns)
-    if missing_result_columns:
-        raise ValueError(f"Database results is missing expected columns: {missing_result_columns}")
-    
-    return df_main, df_results
+from db.schema import AttributeSchema, ResultColumns, DatasetBuildPlan, DatasetBuildPlanOverrides, FACTORS
+from db.read import load_data_frames
 
 def process_results(dataset_dfs: list[tuple[pd.DataFrame, pd.DataFrame]]) -> pd.DataFrame:
     """
@@ -173,7 +146,7 @@ if __name__=="__main__":
     for dataset in DATASETS:
         dataset_path = os.path.join(MAIN_DATASET_PATH, dataset)
         print(f"Loading dataset from {dataset_path}...")
-        df_main, df_results = load_lab_db_frames(dataset_path)
+        df_main, df_results = load_data_frames(dataset_path)
         # print("Describe results DataFrame:")
         # print(df_results.dtypes)
         dataset_dfs.append((df_main, df_results))

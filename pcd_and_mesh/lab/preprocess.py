@@ -1,6 +1,10 @@
 """
 This script reads input data captured using an iPhone device.
 The data includes RGB and mesh data from SurfaceIntegrityChecker iOS app, and point cloud data from apps such as SiteScape.
+
+It aligns the anchors (AprilTags) detected in the RGB image with the mesh data, and visualizes the mesh together with the anchors.
+Future plan is to enable automatic cropping of the mesh using the anchors.
+Future plan is to include the point cloud as well, however, the point cloud data captured using SiteScape app is not aligned with the RGB and mesh data.
 """
 import os
 import sys
@@ -12,28 +16,14 @@ from PIL import Image, ImageDraw, ImageFont
 import cv2
 import open3d as o3d
 
-from utils.read_utils import read_pcd, read_rgb, read_mesh, read_transform, read_intrinsics, read_main_data
-from utils.mesh_crop_utils import get_crop_anchors
+from apriltags.utils import APRIL_TAGS_USED, TEST_APRIL_TAGS_USED, detect_apriltags
+from vision_utils.read import read_pcd, read_rgb, read_mesh, read_transform, read_intrinsics, read_main_data
+from vision_utils.crop import get_crop_anchors
 
 """
 NOTE: The point cloud is read from a dedicated point cloud directory.
 Other data (RGB, mesh) is read from the main trial directory.
 """
-
-APRIL_TAGS_USED = {
-    "BL": 201,
-    "BR": 202,
-    "M": 102, # Middle
-    "TL": 203,
-    "TR": 204
-}
-
-TEST_APRIL_TAGS_USED = {
-    "TL": 301,
-    "TR": 302,
-    "BL": 304,
-    "BR": 303
-}
 
 def align_pcd(pcd: o3d.geometry.PointCloud, transform: np.ndarray) -> tuple[o3d.geometry.PointCloud, np.ndarray]:
     """
@@ -100,19 +90,6 @@ def align_pcd(pcd: o3d.geometry.PointCloud, transform: np.ndarray) -> tuple[o3d.
         aligned_pcd.normals = pcd.normals
 
     return aligned_pcd, adjusted_transform
-
-def detect_apriltags(img: Image.Image, aruco_detector=None) -> tuple[np.ndarray, np.ndarray]:
-    if aruco_detector is None:
-        dic = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11)
-        parameters = cv2.aruco.DetectorParameters()
-        aruco_detector = cv2.aruco.ArucoDetector(dic, parameters)
-
-    img_array = np.array(img)
-    image_cv2 = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
-    gray = cv2.cvtColor(image_cv2, cv2.COLOR_BGR2GRAY)
-    corners, ids, rejected = aruco_detector.detectMarkers(gray)
-    
-    return corners, ids
 
 def get_depth_at_img_point(depth: np.ndarray, img: Image.Image, x: int, y: int) -> float:
     """

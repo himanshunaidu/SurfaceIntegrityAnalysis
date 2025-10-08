@@ -11,63 +11,9 @@ from PIL import Image, ImageDraw, ImageFont
 import cv2
 import open3d as o3d
 
-from schema import AttributeSchema, ResultColumns, DatasetBuildPlan, DatasetBuildPlanOverrides, FACTORS
-from schema_utils import load_lab_db_frames
-
-def update_lab_db_frames(dataset_path: str, db_main_frame: pd.DataFrame, db_results_frame: pd.DataFrame) -> None:
-    """
-    Updates the lab database CSV files from the given pandas DataFrames.
-    """
-    if not os.path.exists(dataset_path):
-        raise FileNotFoundError(f"Database file not found: {dataset_path}")
-
-    db_main_path = os.path.join(dataset_path, "lab_db.csv")
-    db_main_frame.to_csv(db_main_path, index=False)
-    print(f"Updated main database CSV file: {db_main_path}")
-
-    db_results_path = os.path.join(dataset_path, "lab_db_results.csv")
-    db_results_frame.to_csv(db_results_path, index=False)
-    print(f"Updated results database CSV file: {db_results_path}")
-
-def sync_lab_db_frames_with_pcd_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
-                    pcd_dir: str = 'pcd', output_dir: str = 'pcd_cropped')-> pd.DataFrame:
-    point_cloud_files = glob.glob(os.path.join(dataset_path, pcd_dir, "*.ply"))
-    point_cloud_files.sort()
-    point_cloud_file_names = [os.path.basename(f) for f in point_cloud_files]
-    print(f"Found {len(point_cloud_file_names)} point cloud files in {os.path.join(dataset_path, pcd_dir)}")
-    
-    for index, row in db_results_frame.iterrows():
-        trial_name = row['trial_name']
-        row_pcds = [f for f in point_cloud_file_names if f.startswith(trial_name)]
-        
-        num_trials = 0
-        for pcd_file in row_pcds:
-            if check_pcd_crop(db_results_frame, index, dataset_path, pcd_file[:-4], pcd_dir=pcd_dir, output_dir=output_dir):
-                num_trials += 1
-        
-        # Update the dataframe with number of point clouds found
-        db_results_frame.at[index, ResultColumns.POINT_CLOUD_NUMBER.value] = num_trials
-        db_results_frame.at[index, ResultColumns.POINT_CLOUD_AVAILABLE.value] = (num_trials > 0)
-        print(f"Updated DataFrame for row index {index}, trial_name '{trial_name}': point_cloud_number = {num_trials}, point_cloud_available = {num_trials > 0}")
-        
-    return db_results_frame
-
-def check_pcd_crop(db_results_frame: pd.DataFrame, db_results_index: int,
-    dataset_path: str, row_label: str, *, 
-    pcd_dir: str = 'pcd', output_dir: str = 'pcd_cropped', repeat_crop: bool = False) -> bool:
-    """
-    Checks if the point cloud for the given row_label has already been cropped and saved.
-    """
-    output_path = os.path.join(dataset_path, output_dir)
-    if os.path.exists(output_path):
-        pcd_file = os.path.join(output_path, f"{row_label}.ply")
-        if os.path.exists(pcd_file):
-            return True
-        else:
-            print(f"PCD file not found: {pcd_file}.")
-    else:
-        print(f"Output directory not found: {output_path}.")
-    return False
+from db.schema import AttributeSchema, ResultColumns, DatasetBuildPlan, DatasetBuildPlanOverrides, FACTORS
+from db.read import load_data_frames
+from db.update import update_data_frames, update_results_data_frame, sync_data_frames_with_pcd_files
 
 def process_pcd_files(dataset_path: str, db_results_frame: pd.DataFrame, *, 
                     pcd_dir: str = 'pcd', output_dir: str = 'pcd_cropped') -> None:
@@ -97,10 +43,10 @@ def process_pcd_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
             # Setup pcd cropping for this file
             setup_pcd_crop(db_results_frame, index, dataset_path, pcd_file[:-4], pcd_dir=pcd_dir, output_dir=output_dir)
             
-            update_results_csv(db_results_frame, dataset_path)
+            update_results_data_frame(db_results_frame, dataset_path)
         
         print(f"Completed processing for row index {index}, trial_name '{trial_name}'. {len(row_pcds)} subtrials processed.")
-        update_results_csv(db_results_frame, dataset_path)
+        update_results_data_frame(db_results_frame, dataset_path)
 
 def setup_pcd_crop(db_results_frame: pd.DataFrame, db_results_index: int,
     dataset_path: str, row_label: str, *, 
@@ -150,23 +96,15 @@ def setup_pcd_crop(db_results_frame: pd.DataFrame, db_results_index: int,
     db_results_frame.at[db_results_index, ResultColumns.POINT_CLOUD_NUMBER.value] = current_point_cloud_number + 1
     db_results_frame.at[db_results_index, ResultColumns.POINT_CLOUD_AVAILABLE.value] = True
     print(f"Updated DataFrame for row '{row_label}': point_cloud_number = {current_point_cloud_number + 1}, point_cloud_available = True")
-    
-def update_results_csv(db_results_frame: pd.DataFrame, dataset_path: str, *, results_file: str = 'lab_db_results.csv') -> None:
-    """
-    Saves the updated results DataFrame back to the CSV file.
-    """
-    out_path = os.path.join(dataset_path, results_file)
-    db_results_frame.to_csv(out_path, index=False)
-    print(f"Wrote updated results DataFrame with {len(db_results_frame)} entries to {out_path}")
 
 if __name__=="__main__":
     DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_4"))
     
-    db_main_frame, db_results_frame = load_lab_db_frames(DATASET_PATH)
+    db_main_frame, db_results_frame = load_data_frames(DATASET_PATH)
     print(f"Loaded lab database with {len(db_main_frame)} entries.")
     
-    db_results_frame = sync_lab_db_frames_with_pcd_files(DATASET_PATH, db_results_frame)
-    update_results_csv(db_results_frame, DATASET_PATH)
+    db_results_frame = sync_data_frames_with_pcd_files(DATASET_PATH, db_results_frame)
+    update_results_data_frame(db_results_frame, DATASET_PATH)
 
     # dataset_pcd_path = os.path.join(DATASET_PATH, "pcd")
     process_pcd_files(DATASET_PATH, db_results_frame)

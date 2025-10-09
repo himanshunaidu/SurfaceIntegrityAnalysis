@@ -53,7 +53,7 @@ def sync_data_frames_with_mesh_files(dataset_path: str, db_results_frame: pd.Dat
     subtrial_directory_names = [os.path.basename(d) for d in subtrial_directories if os.path.isdir(d)]
     # print(f"Found {len(subtrial_directory_names)} subtrial directories in {dataset_path}")
     for index, row in db_results_frame.iterrows():
-        trial_name = row['trial_name'] # TODO: Remove hardcoding
+        trial_name = row[AttributeSchema.Columns.TRIAL_NAME.value]
         row_subtrials = [d for d in subtrial_directory_names if d.startswith(trial_name)]
         
         num_meshes = 0

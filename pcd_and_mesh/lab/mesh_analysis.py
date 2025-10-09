@@ -10,6 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
 import logging
+import optuna
+from optuna import Trial
 
 from vision_utils.mesh import check_integrity as check_mesh_integrity, IntegrityDetails as MeshIntegrityDetails
 from utils.plane import get_plane_mesh, get_viz_with_transparency
@@ -19,7 +21,11 @@ from db.read import load_data_frames
 from db.update import update_data_frames
 
 def process_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *, 
-                    mesh_dir: str = 'mesh_cropped', output_dir: str = 'mesh_analyzed') -> None:
+                    mesh_dir: str = 'mesh_cropped', output_dir: str = 'mesh_analyzed',
+                    depth_thr: float = 0.005, near_plane_thr: float = 0.05, 
+                    min_angle_thr: float = 10.0,
+                    dbscan_eps: float = 0.05, dbscan_min_samples: int = 3,
+                    issue_area_percent_thr: float = 0.005) -> None:
     """
     Loads all mesh files from the dataset path based on the database results frame and analyzes them for
     surface integrity issues.
@@ -35,7 +41,7 @@ def process_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
     print(f"Found {len(subtrial_directory_names)} subtrial directories in {dataset_path}")
     
     for index, row in db_results_frame.iterrows():
-        trial_name = row['trial_name']
+        trial_name = row[AttributeSchema.Columns.TRIAL_NAME.value]
         num_issues = 0
         row_subtrials = [d for d in subtrial_directory_names if d.startswith(trial_name)]
         if not row_subtrials:
@@ -52,7 +58,10 @@ def process_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
             mesh_file = mesh_files[0]  # Assuming one .ply file per subtrial
             logging.info(f"Analyzing mesh file {mesh_file} for trial_name '{trial_name}' in row index {index}")
             
-            analyzed_mesh, has_issues, mesh_integrity_details = check_mesh_integrity(mesh_file)
+            analyzed_mesh, has_issues, mesh_integrity_details = check_mesh_integrity(
+                mesh_file, depth_thr=depth_thr, near_plane_thr=near_plane_thr, min_angle_thr=min_angle_thr,
+                dbscan_eps=dbscan_eps, dbscan_min_samples=dbscan_min_samples,
+                issue_area_percent_thr=issue_area_percent_thr)
             logging.info(f"Signed distance stats: {get_array_stats(mesh_integrity_details.distance_arr)}")
             logging.info(f"Angle stats: {get_array_stats(mesh_integrity_details.angle_arr)}")
             logging.info(f"Angle median = {mesh_integrity_details.angle_median:.2f} deg, MAD = {mesh_integrity_details.angle_mad:.2f} deg")
@@ -75,7 +84,7 @@ def process_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
             #     current_polygon_mesh_result = 0
             # db_results_frame.at[index, ResultColumns.POLYGON_MESH_RESULT.value] = current_polygon_mesh_result + (1 if has_issues else 0)
         db_results_frame.at[index, ResultColumns.POLYGON_MESH_RESULT.value] = num_issues
-        print(f"Completed processing for row index {index}, trial_name '{trial_name}'. {num_issues} subtrials with issues.")
+        print(f"Completed processing for row index {index}, trial_name '{trial_name}'. {num_issues} subtrials with issues.")    
 
 if __name__=="__main__":
     DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_5"))

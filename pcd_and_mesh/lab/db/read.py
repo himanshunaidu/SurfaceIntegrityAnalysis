@@ -53,7 +53,7 @@ def load_data_frames(dataset_path: str, *,
     
     return df_main, df_results
 
-def check_mesh_crop(db_results_frame: pd.DataFrame, db_results_index: int,
+def check_mesh_crop(results_frame: pd.DataFrame, results_index: int,
     dataset_path: str, row_label: str, *, 
     mesh_dir: str = 'mesh', output_dir: str = 'mesh_cropped', repeat_crop: bool = True) -> bool:
     """
@@ -75,7 +75,7 @@ def check_mesh_crop(db_results_frame: pd.DataFrame, db_results_index: int,
         print(f"Output directory not found: {output_path}.")
     return False
 
-def check_pcd_crop(db_results_frame: pd.DataFrame, db_results_index: int,
+def check_pcd_crop(results_frame: pd.DataFrame, results_index: int,
     dataset_path: str, row_label: str, *, 
     pcd_dir: str = 'pcd', output_dir: str = 'pcd_cropped', repeat_crop: bool = False) -> bool:
     """

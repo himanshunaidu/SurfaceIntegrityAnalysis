@@ -34,7 +34,6 @@ def check_integrity(mesh_file_path: str, *,
     mesh = o3d.io.read_triangle_mesh(mesh_file_path)
     mesh.compute_vertex_normals()
     mesh.compute_triangle_normals()
-    logging.info(f"Loaded mesh from: {mesh_file_path}")
     
     # --- Step 2: Analyze the mesh ---
     num_polygons = len(mesh.triangles)

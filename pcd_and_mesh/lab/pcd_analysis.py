@@ -18,7 +18,7 @@ from db.schema import AttributeSchema, ResultColumns, DatasetBuildPlan, DatasetB
 from db.read import load_data_frames
 from db.update import update_data_frames, update_results_data_frame
 
-def process_pcd_files(dataset_path: str, db_results_frame: pd.DataFrame, *, 
+def process_pcd_files(dataset_path: str, db_main_frame: pd.DataFrame, db_results_frame: pd.DataFrame, *, 
                       pcd_dir: str = 'pcd_cropped', output_dir: str = 'pcd_analysis') -> None:
     """
     Loads all point cloud files from the dataset path based on the database results frame and analyzes them for
@@ -39,7 +39,8 @@ def process_pcd_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
     os.makedirs(output_dir_path, exist_ok=True)
     
     for index, row in db_results_frame.iterrows():
-        trial_name = row['trial_name']
+        trial_name = row[AttributeSchema.Columns.TRIAL_NAME.value]
+        
         num_issues = 0
         row_pcds = [f for f in point_cloud_file_names if f.startswith(trial_name)]
         if not row_pcds:
@@ -62,7 +63,9 @@ def process_pcd_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
             logging.info(f"Point cloud analysis completed. Issues detected: {has_issues}")
             
             output_pcd_file_path = os.path.join(output_dir_path, pcd_file)
-            o3d.io.write_point_cloud(output_pcd_file_path, analyzed_pcd)
+            # o3d.io.write_point_cloud(output_pcd_file_path, analyzed_pcd)
+            o3d.visualization.draw_geometries([analyzed_pcd])
+            
             print(f"Saved analyzed point cloud to: {output_pcd_file_path}")
             
             if has_issues: num_issues += 1
@@ -82,6 +85,6 @@ if __name__=="__main__":
     db_main_frame, db_results_frame = load_data_frames(DATASET_PATH)
     print(f"Loaded lab database with {len(db_main_frame)} entries.")
     
-    process_pcd_files(DATASET_PATH, db_results_frame)
+    process_pcd_files(DATASET_PATH, db_main_frame, db_results_frame)
     
-    update_data_frames(DATASET_PATH, db_main_frame, db_results_frame)
+    # update_data_frames(DATASET_PATH, db_main_frame, db_results_frame)

@@ -9,7 +9,7 @@ from sklearn.cluster import DBSCAN
 class IntegrityDetails:
     def __init__(self, distance_arr: np.ndarray, angle_arr: np.ndarray, 
                  angle_median: float, angle_mad: float, angle_threshold: float,
-                 num_points: int, num_issues: int):
+                 num_points: int, num_issues: int, issue_mask: np.ndarray):
         self.distance_arr = distance_arr
         self.angle_arr = angle_arr
         self.angle_median = angle_median
@@ -17,11 +17,14 @@ class IntegrityDetails:
         self.angle_threshold = angle_threshold
         self.num_points = num_points
         self.num_issues = num_issues
+        self.issue_mask = issue_mask
 
 def check_integrity(pcd_file_path: str, *, 
                  depth_thr: float = 0.004, near_plane_thr: float = 0.05, 
                  min_angle_thr: float = 15.0,
                  dbscan_eps: float = 0.05, dbscan_min_samples: int = 5,
+                 normal_radius: float = 0.03, normal_knn: int = 30, normal_orient_k: int = 50,
+                 boundary_radius: float = 0.05, boundary_knn: int = 30, boundary_angle_thr: float = 60.0,
                  issue_percent_thr: float = 0.005) -> tuple[o3d.geometry.PointCloud, bool, IntegrityDetails]:
     """
     Analyzes the given point cloud file for surface integrity issues.
@@ -29,8 +32,8 @@ def check_integrity(pcd_file_path: str, *,
     pcd_original = o3d.io.read_point_cloud(pcd_file_path)
     pcd = pcd_original.voxel_down_sample(voxel_size=0.01)
     
-    pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=30))
-    pcd.orient_normals_consistent_tangent_plane(50) # Hardcoded for now
+    pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=normal_knn))
+    pcd.orient_normals_consistent_tangent_plane(normal_orient_k)
     
     # Recompute normals
     num_points = np.asarray(pcd.points).shape[0]
@@ -53,9 +56,8 @@ def check_integrity(pcd_file_path: str, *,
     signed_dist = P @ plane_normal + d  # meters; negative = below plane
 
     # Per-point normals
-    normal_radius = 0.03
-    pcd.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=normal_radius, max_nn=50))
-    pcd.orient_normals_consistent_tangent_plane(30)
+    pcd.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=normal_radius, max_nn=normal_knn))
+    pcd.orient_normals_consistent_tangent_plane(normal_orient_k)
     
     N = np.asarray(pcd.normals)
     # Make normals coherent w.r.t. the plane normal so angles are in [0, 90]
@@ -101,6 +103,16 @@ def check_integrity(pcd_file_path: str, *,
     pcd_vis.colors = o3d.utility.Vector3dVector(colors)
 
     # plane_mesh_geom = get_viz_with_transparency(mesh=plane_mesh, name='Fitted Plane')
+    pcd_vis_t = o3d.t.geometry.PointCloud.from_legacy(pcd_vis)
+    pcd_vis_t.estimate_normals(normal_knn)
+    pcd_vis_t.orient_normals_consistent_tangent_plane(normal_orient_k)
+    
+    boundarys, mask = pcd_vis_t.compute_boundary_points(boundary_radius, boundary_knn, angle_threshold=boundary_angle_thr)
+    mask = mask.numpy().astype(bool)
+    pcd_vis_t = pcd_vis_t.select_by_index(np.where(mask==False)[0])
+    pcd_vis = pcd_vis_t.to_legacy()
+    
+    issue_mask = issue_mask & (~mask) # ignore boundary points
     
     total_points = len(pcd.points)
     issue_points = np.sum(issue_mask)
@@ -114,7 +126,8 @@ def check_integrity(pcd_file_path: str, *,
         angle_mad=mad,
         angle_threshold=angle_thr,
         num_points=num_points,
-        num_issues=issue_points
+        num_issues=issue_points,
+        issue_mask=issue_mask
     )
 
     return pcd_vis, issue_percent > issue_percent_thr, pcd_integrity_details

@@ -5,3 +5,13 @@ __pycache__/
 
 # Mac
 *.DS_Store
+
+# Coreml
+*.mlmodel
+*.mlmodelc
+*.mlpackage
+
+# Pytorch
+*.pt
+*.pth
+*.ckpt

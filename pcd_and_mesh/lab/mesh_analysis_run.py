@@ -20,6 +20,19 @@ from db.schema import AttributeSchema, ResultColumns, DatasetBuildPlan, DatasetB
 from db.read import load_data_frames
 from db.calc import calc_integrity_issue
 
+def filter_row(
+    results_row: pd.Series, *,
+    sub_dir_name: str
+    ) -> bool:
+    """
+    An ad-hoc function to filter rows that need to be processed.
+    """
+    # For now, we only process subdirectories that had board placement down
+    board_placement = int(sub_dir_name.split("-")[3])
+    print(f"Subdirectory {sub_dir_name} has board_placement = {board_placement}")
+    return board_placement == 1
+    # return True
+
 def process_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *, 
                     mesh_dir: str = 'mesh_cropped', output_dir: str = 'mesh_analyzed',
                     depth_thr: float = 0.005, near_plane_thr: float = 0.05, 
@@ -56,6 +69,9 @@ def process_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
                 print(f"No mesh files found in {mesh_path} for trial_name '{trial_name}' in row index {index}")
                 continue
             mesh_file = mesh_files[0]  # Assuming one .ply file per subtrial
+            
+            if not filter_row(row, sub_dir_name=sub_dir_name): 
+                continue
             
             analyzed_mesh, has_issues, mesh_integrity_details = check_mesh_integrity(
                 mesh_file, depth_thr=depth_thr, near_plane_thr=near_plane_thr, min_angle_thr=min_angle_thr,
@@ -163,7 +179,8 @@ def objective(trial: Trial):
     dbscan_min_samples = trial.suggest_categorical("dbscan_min_samples", [3, 5, 10])
     issue_area_percent_thr = trial.suggest_categorical("issue_area_percent_thr", [0.001, 0.01, 0.05, 0.1])
     
-    logging.info(f"Trial parameters: depth_thr={depth_thr}, near_plane_thr={near_plane_thr}, min_angle_thr={min_angle_thr}, dbscan_eps={dbscan_eps}, dbscan_min_samples={dbscan_min_samples}, issue_area_percent_thr={issue_area_percent_thr}\n")
+    logging.info(f"Starting trial with parameters: depth_thr={depth_thr}, near_plane_thr={near_plane_thr}, min_angle_thr={min_angle_thr}, dbscan_eps={dbscan_eps}, dbscan_min_samples={dbscan_min_samples}, issue_area_percent_thr={issue_area_percent_thr}\n")
+    # logging.info(f"Trial parameters: depth_thr={depth_thr}, near_plane_thr={near_plane_thr}, min_angle_thr={min_angle_thr}, dbscan_eps={dbscan_eps}, dbscan_min_samples={dbscan_min_samples}, issue_area_percent_thr={issue_area_percent_thr}\n")
     
     DATASET_MAIN_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled"))
     DATASETS = ["experiment_4", "experiment_5", "experiment_6"]
@@ -172,7 +189,7 @@ def objective(trial: Trial):
     
     for dataset in DATASETS:
         DATASET_PATH = os.path.join(DATASET_MAIN_PATH, dataset)
-        logging.info(f"Starting trial for dataset: {DATASET_PATH}")
+        # logging.info(f"Starting trial for dataset: {DATASET_PATH}")
         db_main_frame, db_results_frame = load_data_frames(DATASET_PATH)
         dataset_mesh_path = os.path.join(DATASET_PATH, "main")
         process_mesh_files(
@@ -182,26 +199,39 @@ def objective(trial: Trial):
             issue_area_percent_thr=issue_area_percent_thr
         )
         num_rows_with_issues = db_results_frame[db_results_frame[ResultColumns.POLYGON_MESH_RESULT.value] > 0].shape[0]
-        logging.info(f"Trial completed. Number of rows with polygon mesh issues: {num_rows_with_issues}\n")
+        # logging.info(f"Trial completed. Number of rows with polygon mesh issues: {num_rows_with_issues}\n")
         
         dataset_dfs.append((db_main_frame, db_results_frame))
     
     combined_df = process_results(dataset_dfs)
     loss_value, total, fpr, fnr = loss(combined_df)
-    logging.info(f"Combined results loss: {loss_value}, Total: {total}, FPR: {fpr}, FNR: {fnr}\n")
+    logging.info(f"Finished trial with parameters: depth_thr={depth_thr}, near_plane_thr={near_plane_thr}, min_angle_thr={min_angle_thr}, dbscan_eps={dbscan_eps}, dbscan_min_samples={dbscan_min_samples}, issue_area_percent_thr={issue_area_percent_thr}\n"+
+        f"Combined results loss: {loss_value}, Total: {total}, FPR: {fpr}, FNR: {fnr}\n")
     return loss_value
 
 if __name__=="__main__":
     DATASET_MAIN_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled"))
     logging.basicConfig(
-        filename=os.path.join(DATASET_MAIN_PATH, "mesh_analysis_run.log"),
+        filename=os.path.join(DATASET_MAIN_PATH, "mesh_analysis_run_board_placement_1_grid.log"),
         filemode='w',
         format='%(asctime)s - %(levelname)s - %(message)s',
         level=logging.INFO
     )
     
-    study = optuna.create_study(direction="minimize", study_name="mesh_integrity_optimization")
-    study.optimize(objective, n_trials=500, timeout=7200)  # 2 hours timeout
+    # Set up grid sampler
+    search_space = {
+        "depth_thr": [0.001, 0.005, 0.01, 0.02, 0.05],
+        "near_plane_thr": [0.05],
+        "min_angle_thr": [2.5, 5.0, 7.5, 10.0],
+        "dbscan_eps": [0.03, 0.05, 0.1],
+        "dbscan_min_samples": [3, 5, 10],
+        "issue_area_percent_thr": [0.001, 0.01, 0.05, 0.1]
+    }
+    sampler = optuna.samplers.GridSampler(search_space)
+    
+    study = optuna.create_study(direction="minimize", study_name="mesh_integrity_optimization", sampler=sampler)
+    n_jobs=max(1, os.cpu_count()-2)
+    study.optimize(objective, timeout=57600, n_jobs=n_jobs)  # 16 hours timeout
     
     # Print the best trial
     best_trial = study.best_trial

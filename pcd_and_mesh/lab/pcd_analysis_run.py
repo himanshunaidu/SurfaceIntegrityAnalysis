@@ -22,6 +22,22 @@ from db.read import load_data_frames
 from db.update import update_data_frames, update_results_data_frame
 from db.calc import calc_integrity_issue
 
+def filter_row(
+    main_row: pd.Series,
+    results_row: pd.Series, *,
+    pcd_file: str
+    ) -> bool:
+    """
+    An ad-hoc function to filter rows that need to be processed.
+    """
+    # For now, we only process subdirectories that had board placement down
+    pcd_file_name = os.path.splitext(os.path.basename(pcd_file))[0]
+    
+    board_placement = int(pcd_file_name.split("-")[3])
+    print(f"Subdirectory {pcd_file_name} has board_placement = {board_placement}")
+    return board_placement == 1
+    # return True
+
 def process_pcd_files(dataset_path: str, db_main_frame: pd.DataFrame, db_results_frame: pd.DataFrame, *, 
                     pcd_dir: str = 'pcd_cropped', output_dir: str = 'pcd_analysis',
                     depth_thr: float = 0.004, near_plane_thr: float = 0.05, 
@@ -59,6 +75,9 @@ def process_pcd_files(dataset_path: str, db_main_frame: pd.DataFrame, db_results
         
         for pcd_file in row_pcds:
             pcd_file_path = os.path.join(dataset_path, pcd_dir, pcd_file)
+            
+            if not filter_row(db_main_frame.iloc[index], row, pcd_file=pcd_file):
+                continue
             
             analyzed_pcd, has_issues, pcd_integrity_details = check_pcd_integrity(
                 pcd_file_path, depth_thr=depth_thr, near_plane_thr=near_plane_thr,
@@ -169,9 +188,9 @@ def objective(trial: Trial = None):
     min_angle_thr = trial.suggest_discrete_uniform("min_angle_thr", 2.5, 10, 2.5)
     dbscan_eps = trial.suggest_categorical("dbscan_eps", [0.03, 0.05, 0.1])
     dbscan_min_samples = trial.suggest_categorical("dbscan_min_samples", [3, 5, 10])
-    issue_area_percent_thr = trial.suggest_categorical("issue_area_percent_thr", [0.001, 0.01, 0.05, 0.1])
+    issue_percent_thr = trial.suggest_categorical("issue_percent_thr", [0.001, 0.01, 0.05, 0.1])
     
-    logging.info(f"Trial parameters: depth_thr={depth_thr}, near_plane_thr={near_plane_thr}, min_angle_thr={min_angle_thr}, dbscan_eps={dbscan_eps}, dbscan_min_samples={dbscan_min_samples}, issue_area_percent_thr={issue_area_percent_thr}\n")
+    logging.info(f"Trial parameters: depth_thr={depth_thr}, near_plane_thr={near_plane_thr}, min_angle_thr={min_angle_thr}, dbscan_eps={dbscan_eps}, dbscan_min_samples={dbscan_min_samples}, issue_percent_thr={issue_percent_thr}\n")
     
     DATASET_MAIN_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled"))
     DATASETS = ["experiment_4", "experiment_5", "experiment_6"]
@@ -187,7 +206,7 @@ def objective(trial: Trial = None):
             dataset_pcd_path, db_main_frame, db_results_frame,
             depth_thr=depth_thr, near_plane_thr=near_plane_thr, min_angle_thr=min_angle_thr,
             dbscan_eps=dbscan_eps, dbscan_min_samples=dbscan_min_samples,
-            issue_area_percent_thr=issue_area_percent_thr
+            issue_percent_thr=issue_percent_thr
         )   
         num_rows_with_issues = db_results_frame[db_results_frame[ResultColumns.POINT_CLOUD_RESULT.value] > 0].shape[0]
         logging.info(f"Trial completed. Number of rows with point cloud issues: {num_rows_with_issues}\n")
@@ -202,14 +221,14 @@ def objective(trial: Trial = None):
 if __name__=="__main__":
     DATASET_MAIN_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled"))
     logging.basicConfig(
-        filename=os.path.join(DATASET_MAIN_PATH, "pcd_analysis_run.log"),
+        filename=os.path.join(DATASET_MAIN_PATH, "pcd_analysis_run_board_placement_1.log"),
         filemode='w',
         format='%(asctime)s - %(levelname)s - %(message)s',
         level=logging.INFO
     )
     
     study = optuna.create_study(direction="minimize", study_name="pcd_integrity_optimization")
-    study.optimize(objective, n_trials=1, timeout=7200)  # 2 hours timeout
+    study.optimize(objective, n_trials=500, timeout=14400)  # 4 hours timeout
     
     # Print the best trial
     best_trial = study.best_trial

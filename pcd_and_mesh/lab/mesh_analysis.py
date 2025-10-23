@@ -20,6 +20,19 @@ from db.schema import AttributeSchema, ResultColumns, DatasetBuildPlan, DatasetB
 from db.read import load_data_frames
 from db.update import update_data_frames
 
+def filter_row(
+    results_row: pd.Series, *,
+    sub_dir_name: str
+    ) -> bool:
+    """
+    An ad-hoc function to filter rows that need to be processed.
+    """
+    # For now, we only process subdirectories that had board placement down
+    board_placement = int(sub_dir_name.split("-")[3])
+    print(f"Subdirectory {sub_dir_name} has board_placement = {board_placement}")
+    return board_placement == 1
+    # return True
+
 def process_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *, 
                     mesh_dir: str = 'mesh_cropped', output_dir: str = 'mesh_analyzed',
                     depth_thr: float = 0.005, near_plane_thr: float = 0.05, 
@@ -50,6 +63,8 @@ def process_mesh_files(dataset_path: str, db_results_frame: pd.DataFrame, *,
         for sub_dir_name in row_subtrials:
             # Setup mesh analysis for this subdirectory
             sub_dir_path = os.path.join(dataset_path, sub_dir_name)
+            if not filter_row(row, sub_dir_name=sub_dir_name): 
+                continue
             mesh_path = os.path.join(sub_dir_path, mesh_dir)
             mesh_files = glob.glob(os.path.join(mesh_path, "*.ply"))
             if not mesh_files:
@@ -102,4 +117,4 @@ if __name__=="__main__":
     dataset_mesh_path = os.path.join(DATASET_PATH, "main")
     process_mesh_files(dataset_mesh_path, db_results_frame)
 
-    update_data_frames(DATASET_PATH, db_main_frame, db_results_frame)
+    # update_data_frames(DATASET_PATH, db_main_frame, db_results_frame)

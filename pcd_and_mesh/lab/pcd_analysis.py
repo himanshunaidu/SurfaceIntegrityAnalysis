@@ -18,6 +18,22 @@ from db.schema import AttributeSchema, ResultColumns, DatasetBuildPlan, DatasetB
 from db.read import load_data_frames
 from db.update import update_data_frames, update_results_data_frame
 
+def filter_row(
+    main_row: pd.Series,
+    results_row: pd.Series, *,
+    pcd_file: str
+    ) -> bool:
+    """
+    An ad-hoc function to filter rows that need to be processed.
+    """
+    # For now, we only process subdirectories that had board placement down
+    pcd_file_name = os.path.splitext(os.path.basename(pcd_file))[0]
+    
+    board_placement = int(pcd_file_name.split("-")[3])
+    print(f"Subdirectory {pcd_file_name} has board_placement = {board_placement}")
+    return board_placement == 1
+    # return True
+
 def process_pcd_files(dataset_path: str, db_main_frame: pd.DataFrame, db_results_frame: pd.DataFrame, *, 
                       pcd_dir: str = 'pcd_cropped', output_dir: str = 'pcd_analysis') -> None:
     """
@@ -51,6 +67,8 @@ def process_pcd_files(dataset_path: str, db_main_frame: pd.DataFrame, db_results
         for pcd_file in row_pcds:
             pcd_file_path = os.path.join(dataset_path, pcd_dir, pcd_file)
             logging.info(f"Processing point cloud file: {pcd_file_path}")
+            if not filter_row(db_main_frame.iloc[index], row, pcd_file=pcd_file):
+                continue
             
             analyzed_pcd, has_issues, pcd_integrity_details = check_pcd_integrity(pcd_file_path)
             logging.info(f"Signed distance stats: {get_array_stats(pcd_integrity_details.distance_arr)}")
@@ -73,7 +91,7 @@ def process_pcd_files(dataset_path: str, db_main_frame: pd.DataFrame, db_results
         print(f"Updated DataFrame for row index {index}, trial_name '{trial_name}': point_cloud_result = {num_issues}")
     
 if __name__=="__main__":
-    DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_4"))
+    DATASET_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dataset", "lab_controlled", "experiment_5"))
     
     logging.basicConfig(
         filename=os.path.join(DATASET_PATH, "pcd_analysis.log"),

@@ -9,7 +9,8 @@ Provides a streamlit app to label the sidewalk surface integrity.
 1. Main Repository
 
 This repository aims to serve the main iOSPointMapper repository:
-[iOSPointMapper](https://github.com/TaskarCenterAtUW/iOSPointMapper)
+[iOSPointMapper](https://github.com/TaskarCenterAtUW/iOSPointMapper)\
+[Relevant Milestone](https://github.com/TaskarCenterAtUW/iOSPointMapper/milestone/13)
 
 2. iOS Prototype
 
